@@ -1,0 +1,272 @@
+---
+title: "AA-GP: figures and tables"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/Documents/aagp_ldak")
+
+library(tidyverse)
+library(kableExtra)
+library(data.table)
+library(emdbook)
+library(gridExtra)
+
+date <- format(Sys.time(), '%Y%m%d')
+
+```
+
+## Phenotypic correlations
+```{r phenotypic correlations}
+
+pheno <- read_table2("data/processed/pheno_file")
+
+corr <- cor(pheno[,3:56], use = "complete.obs")
+
+
+heatmap(corr)
+
+library(gplots)
+library(viridis)
+
+# read in amino acid trait ids
+aa_names <- data.frame(trait = colnames(read.table("data/processed/pheno_file", 
+                                                   header = TRUE)[3:56]), 
+                       id = as.character(1:54))
+
+## group into amino acid families (based on precursors)
+aa_fam <- list(
+  aspartate = data.frame(trait =
+                           aa_names[grepl("asp|ile|lys|thr|met|Asp", aa_names$trait), 1], 
+                                    aa_fam = "aspartate"),
+  glutamate = data.frame(trait = aa_names[grepl("arg|glu|gln|pro|GluFam", aa_names$trait) &
+                                            !grepl("ile|leu|val", aa_names$trait) &
+                                            !grepl("his", aa_names$trait), 1], aa_fam = "glutamate"),
+  serine = data.frame(trait = aa_names[grepl("gly|ser|SerFam", aa_names$trait), 1], aa_fam = "serine"),
+  pyruvate = data.frame(trait = aa_names[grepl("ala|val|leu|BCAA|PyrFam", aa_names$trait) &
+                                           !grepl("ile", aa_names$trait), 1], aa_fam = "pyruvate"),
+  shikimate = data.frame(trait = aa_names[grepl("phe|tyr|trp|ShikFam", aa_names$trait), 1], aa_fam = "shikimate"),
+  histidine = data.frame(trait = aa_names[grepl("his", aa_names$trait), 1], aa_fam = "histidine"),
+  total = data.frame(trait = "Total", aa_fam = "total")
+) %>%
+  map_df(I)
+
+library(RColorBrewer)
+
+cols <- data.frame(aa_fam = unique(aa_fam$aa_fam), 
+                   col = brewer.pal(length(unique(aa_fam$aa_fam)), name = "Dark2"))
+
+aa_fam <- left_join(aa_fam, cols, by = "aa_fam")
+
+pheno_long <- pheno %>%
+  gather(key = "trait", value = "measurement", -FID, -IID) %>%
+  left_join(., aa_fam, by = "trait")
+
+cols2 <- pheno_long %>% 
+  select(trait, col) %>%
+  unique()
+
+corr2 <- pheno %>% 
+  select(-FID, -IID) %>% #  select(ile, leu, val, Total, BCAA, ile_BCAA, leu_BCAA, val_BCAA) %>%
+  cor(., use = "complete.obs") %>%
+  heatmap.2(trace = "none", col = viridis(10),
+            RowSideColors = c(
+              rep("gray", 19),
+              rep("blue", 17),
+              rep("black", 18)
+            ),
+            ColSideColors = as.character(cols2$col))
+
+aa_fam <- aa_fam[with(aa_fam, order(trait)),] 
+
+aa_fam <- aa_fam[with(aa_fam, order(aa_fam)),] %>%
+  left_join(., cols2, by = "trait")
+
+
+corr2 <- pheno %>% 
+  select(aa_fam$trait) %>% #  select(ile, leu, val, Total, BCAA, ile_BCAA, leu_BCAA, val_BCAA) %>%
+  cor(., use = "complete.obs") %>%
+  heatmap.plus(col = viridis(10),
+            RowSideColors = cbind(NA, as.character(aa_fam[,3])),
+            symm = TRUE, Colv = NA, Rowv = NA)
+
+
+```
+
+
+
+## GBLUP - predictive ability
+
+**Free amino acid traits with moderate (r > 0.3) predictive abilities based on genomic best linear unbiased prediction (GBLUP).** Predictive abilities for absolute levels, relative composition (compared to the total), and family ratios of free amino acid traits (including a composite trait for total free amino acid content). Predictive ability was calculated as the mean of 50 cross validations (10-fold with a one-fold hold out, repeated five times). Ratios were determined by amino acid family (i.e. metabolic precursor) and/or results from network analysis.
+
+```{r gblup moderate pa}
+
+gblup_pa <- readRDS("models/20190207_gblup_pa.rds")
+
+# set colorblind friendly palette
+cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+
+gblup_pa %>%
+  group_by(trait) %>%
+  filter(mean(cor) > 0.3) %>%
+  ungroup() %>%
+  ggplot(., aes(reorder(trait, -cor), cor, fill = aa_cat, col = aa_cat)) +
+  scale_fill_manual(values = cbPalette) + 
+  scale_colour_manual(values = cbPalette) + 
+  geom_point(position = position_jitterdodge(dodge.width = 1), alpha = 0.5) + 
+  geom_boxplot(col = "grey25", position = position_dodge(width = 0.9), 
+               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
+  facet_grid(.~ aa_cat, scales = "free_x", space = "free") + 
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("") +
+  ylab("Predictive ability (r)")
+
+ ggsave(paste0("reports/figures/", date, "_Fig1.png"), height = 3, width = 6)
+
+```
+
+```{r table 1 }
+
+gblup_pa %>%
+  mutate(aa_cat = fct_relevel(aa_cat, c("absolute", "relative", "family")),
+    trait = fct_reorder(trait, as.numeric(aa_cat))) %>%
+  group_by(trait, aa_cat) %>%
+  summarize_at(vars(cor), funs(mean, se = sd(.)/sqrt(length(.)))) %>%
+  kable(digits = 3) %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  group_rows(index = c("absolute" = 19, "relative" = 17, "family" = 18))
+
+```
+
+## Multiblup vs null distribution
+
+**Biological pathways explain significant variation for multiple amino acid traits.** Dots indicate pathways that are greater than the 95% null threshold for heritability and likelihood ratio, with the size proportional to the heritability explained by the pathway in the multiBLUP model. Color indicates significant LR for a chisq test (df = 1). 
+
+```{r table 2}
+
+# files <- list.files(path = "models/multiblup_h2", pattern = "h2_\\d+.reml$", full.names = TRUE, recursive = TRUE)
+# 
+# h2 <- tibble(file = files) %>%
+#   separate(file, sep = "/", into = c("source", "sub", "pathway", "id"), remove = FALSE) %>%
+#   mutate(data = lapply(file, read.table, header = TRUE, skip = 13)) %>%
+#   unnest(data) %>%
+#   mutate(id = str_replace(id, "multiblup_h2_", ""),
+#          id = str_extract(id, "\\d+")) %>%
+#   left_join(., aa_names, by = "id") %>%
+#   select(trait, pathway, Component, Heritability, Her_SD) %>%
+#   filter(Component %in% c("Her_K1", "Her_K2", "Her_ALL")) %>% #& Heritability >= 0) %>%
+#   mutate(Component = factor(Component, levels = c("Her_K1", "Her_K2", "Her_ALL")))
+# 
+# lr <- tibble(file = files) %>%
+#   separate(file, sep = "/", 
+#            into = c("source", "sub", "pathway", "id"), remove = FALSE) %>%
+#   mutate(data = lapply(file, read.table, header = TRUE)) %>%
+#   unnest(data) %>%
+#   filter(Num_Kinships %in% "Alt_Likelihood") %>%
+#   mutate(id = str_replace(id, "multiblup_h2_", ""),
+#          id = str_replace(id, ".reml", ""),
+#          multiblup_llik = as.numeric(X2)) %>%
+#   left_join(., aa_names, by = "id") %>%
+#   left_join(., gblup_llik, by = c("id", "trait")) %>%
+#   select(trait, id, pathway, Num_Kinships, multiblup_llik, gblup_llik) %>%
+#   mutate(LR = 2 * (multiblup_llik - gblup_llik)) %>%
+#   select(pathway, trait, LR)
+# 
+# multiblup_h2 <- left_join(h2, lr, by = c("trait", "pathway")) %>%
+#   write_csv(paste0("reports/", date, "_multiblup_h2_results.csv"))
+
+pathways <- read_csv("reports/20190212_pathways_summary.csv") %>%
+  filter(!pathway == "glycolysis")
+
+multiblup_h2 <- read_csv("reports/20190212_multiblup_h2_results.csv") %>%
+  filter(!pathway == "glycolysis")
+
+head(multiblup_h2)
+
+multiblup_thresholds <- read_csv("reports/20190221_multiblup_thresholds.csv")
+
+multiblup_result <- left_join(multiblup_h2, multiblup_thresholds, by = c("trait", "pathway")) %>%
+  filter(Component == "Her_K1") %>%
+  mutate(lr_pass = LR > lr_95,
+         h2_pass = Heritability > h2_95)
+
+# split pathways into categories
+primary <- filter(pathways[,1], grepl("aa_|glycolysis|tca_cycle", pathway))
+protein <- filter(pathways[,1], grepl("protein|degradation_", pathway)) 
+secondary <- filter(pathways[,1], !grepl("aa_|glycolysis|tca|protein|degradation", pathway)) 
+
+# define categories for plotting
+cats <- list(primary = primary, protein = protein, secondary = secondary) %>%
+  map_df(I, .id = "category")
+
+multiblup_result <- left_join(multiblup_result, cats, by = "pathway") %>%
+  mutate(category = factor(category, levels = unique(category)))
+
+multiblup_pass <- multiblup_result %>%
+  group_by(trait) %>%
+  mutate(chisq = 
+           ifelse(trait %in% c("BCAA", "glu_GluFamCorr", "his", "leu", "Total", "tyr_t"), 
+                  pchibarsq(LR, df = 2, mix = 0.5, lower.tail = FALSE),
+                  ifelse(trait %in% c("asp_t", "ShikFam", "val"),
+                         pchisq(LR, df = 2, lower.tail = FALSE),
+                         pchisq(LR, df = 1, lower.tail = FALSE))),
+         x_fdr = p.adjust(chisq, method = "fdr"),
+         col = x_fdr < 0.2) %>%
+  filter(lr_pass == TRUE,
+         h2_pass == TRUE) %>%
+  ungroup()
+
+aa_names <- data.frame(trait = colnames(read.table("data/processed/pheno_file", header = TRUE)[3:56]), id = as.character(1:54))
+
+aa_cat <- list(absolute = data.frame(trait = aa_names[!grepl("_t|Fam|Corr|BCAA", aa_names$trait), 1], aa_cat = "absolute"),
+               relative = data.frame(trait = aa_names[grepl("_t", aa_names$trait), 1], aa_cat = "relative"),
+               family = data.frame(trait = aa_names[grepl("Fam|Corr|BCAA", aa_names$trait),1], aa_cat = "family")) %>%
+  map_df(I)
+
+multiblup_pass <- left_join(multiblup_pass, aa_cat, by = c("trait")) %>%
+  mutate(aa_cat = fct_relevel(aa_cat, c("absolute", "relative", "family")))
+
+multiblup_pass %>%
+  arrange(x_fdr) %>%
+  select(trait, pathway, n_genes, size, LR, Heritability, Her_SD, chisq, x_fdr) %>%
+  kable() %>%
+  kable_styling("striped", full_width = FALSE)
+
+```
+
+```{r fig 2}
+
+ggplot(multiblup_pass, 
+       aes(trait, reorder(pathway, -as.numeric(category)), col = col, size = Heritability)) +
+  geom_point() +
+  # scale_color_gradient(low = "#02818a", high = "#f6eff7") + 
+  scale_colour_manual(values = cbPalette[c(6,3)],
+                      name = "pvalue (FDR)",
+                      labels = c(expression(paste(P[FDR] > 0.15)),
+                                 expression(paste(P[FDR] < 0.15)))) + 
+  # scale_colour_discrete(name = "Family") + 
+  facet_grid(category ~ aa_cat, scales = "free", space = "free") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.spacing.y = unit(0.5, "lines"),
+        panel.grid.major = element_line(colour = 'lightgray', size = 0.25),
+        text = element_text(size = 10),
+        axis.text = element_text(size = 8)) +
+  labs(y = "", x = "Amino Acid") 
+
+ggsave(paste0("reports/figures/", date, "_Fig2.png"), height = 4, width = 6)
+
+```
+
+### Multiblup - predictive ability
+
+
+
+

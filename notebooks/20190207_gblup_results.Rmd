@@ -1,0 +1,270 @@
+---
+title: "Summarize predictive ability - GBLUP & multiBLUP"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+This script reads in results from the LDAK software to summarize predictive ability 
+for GBLUP and multiBLUP models 
+
+# Read in data 
+
+```{r setup}
+
+knitr::opts_knit$set(root.dir = "~/Documents/aagp_ldak")
+
+library(tidyverse)
+library(ggpubr)
+library(kableExtra)
+
+date <- format(Sys.time(), '%Y%m%d')
+
+```
+
+```{r define grouping variables}
+
+# read in amino acid trait ids
+aa_names <- data.frame(trait = colnames(read.table("data/processed/pheno_file", 
+                                                   header = TRUE)[3:56]), 
+                       id = as.character(1:54))
+
+## group into amino acid families (based on precursors)
+aa_fam <- list(
+  aspartate = data.frame(trait =
+                           aa_names[grepl("asp|ile|lys|thr|met|Asp", aa_names$trait) &
+                                      !grepl("GluFamCorr", aa_names$trait), 1], aa_fam = "aspartate"),
+  glutamate = data.frame(trait = aa_names[grepl("arg|glu|gln|pro|GluFam", aa_names$trait) &
+                                            !grepl("his", aa_names$trait), 1], aa_fam = "glutamate"),
+  serine = data.frame(trait = aa_names[grepl("gly|ser|SerFam", aa_names$trait), 1], aa_fam = "serine"),
+  pyruvate = data.frame(trait = aa_names[grepl("ala|val|leu|BCAA|PyrFam", aa_names$trait) &
+                                           !grepl("GluFamCorr|ile", aa_names$trait), 1], aa_fam = "pyruvate"),
+  shikimate = data.frame(trait = aa_names[grepl("phe|tyr|trp|ShikFam", aa_names$trait), 1], aa_fam = "shikimate"),
+  histidine = data.frame(trait = aa_names[grepl("his", aa_names$trait), 1], aa_fam = "histidine"),
+  total = data.frame(trait = "Total", aa_fam = "total")
+) %>%
+  map_df(I)
+
+write.table(aa_fam, "models/aa_family_categories.txt", row.names = FALSE)
+
+# group into categories by type of measurement (absolute, relative, ratio)
+aa_cat <- list(absolute = data.frame(trait = aa_names[!grepl("_t|Fam|Corr|BCAA", aa_names$trait), 1], aa_cat = "absolute"),
+               relative = data.frame(trait = aa_names[grepl("_t", aa_names$trait), 1], aa_cat = "relative"),
+               family = data.frame(trait = aa_names[grepl("Fam|Corr|BCAA", aa_names$trait),1], aa_cat = "family")) %>%
+  map_df(I)
+
+write.table(aa_cat, "models/aa_groups.txt", row.names = FALSE)
+
+```
+
+# GBLUP - predictive ability
+Note - ran on cluster & read this in as an RDS object
+
+```{r gblup predictive ability}
+# gblup_pa <- tibble(file = list.files(path = "models/gblup", pattern = ".profile$", full.names = TRUE)) %>%
+#   separate(file, sep = "_", into = c("cv", "cvnum", "fold", "id"), remove = FALSE) %>%
+#   mutate(data = lapply(file, read.table, header = TRUE),
+#          id = gsub(".profile", "", id)) %>%
+#   unnest(data) %>%
+#   group_by(cvnum, fold, id) %>%
+#   mutate(cor = cor(Phenotype, Profile1, use = "complete.obs")) %>%
+#   summarise_at(., "cor", .funs = mean) %>%
+#   ungroup() %>%
+#   left_join(., aa_names, by = "id") %>%
+#   left_join(., aa_cat, by = "trait") %>%
+#   left_join(., aa_fam, by = "trait") %>%
+#   select(trait, aa_cat, aa_fam, cvnum, fold, cor) 
+# 
+# saveRDS(gblup_pa, file = paste0("models/", date, "_gblup_pa.rds"))
+
+gblup_pa <- readRDS("models/20190207_gblup_pa.rds")
+
+# quick check to see if all are sig > 0
+gblup_pa %>% 
+  group_by(trait) %>%
+  mutate(p_value = t.test(cor, alternative = "greater")$p.value) %>% # test if mean correlation is different from zero
+  filter(p_value > 0.05) # should be 0 obs 
+
+gblup_pa %>%
+  group_by(trait) %>%
+  summarize_at(vars(cor), funs(mean, se = sd(.)/sqrt(length(.))))
+
+```
+
+## By category (absolute, relative, ratio)
+
+Significantly higher predictive ability observed for absolute levels of FAAs compared to relative and ratio traits
+
+```{r plot GBLUP pa}
+# set colorblind friendly palette
+cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+  
+# broad comparison for absolute, relative, and ratio categories 
+
+comparisons <- list(c("absolute", "relative"), c("relative", "family"), c("absolute", "family"))
+
+gblup_pa %>%
+  mutate(aa_cat = fct_relevel(aa_cat, "absolute", "relative", "family")) %>%
+  ggplot(., aes(aa_cat, cor, fill = aa_cat, colour = aa_cat)) +
+  scale_fill_manual(values = cbPalette) + 
+  scale_colour_manual(values = cbPalette) + 
+  geom_dotplot(binwidth = 0.01, binaxis = "y", stackdir = "center") + 
+  stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean, geom = "crossbar", width = 0.5, colour = "black") + 
+  theme_bw() +
+  theme(legend.position = "none") +
+  xlab("") +
+  ylab("Predictive ability (r)") +
+  stat_compare_means(comparisons = comparisons, bracket.size = .5) + 
+  stat_compare_means(label.y = 1.25) 
+
+ggsave(paste0("reports/figures/", date, "_pa_by_category.png"), height = 5, width = 5)
+    
+```
+
+## Traits with PA > 0.3
+
+About 1/2 of traits have moderate predictive ability (> 0.3), most of which are absolute levels
+
+```{r gblup moderate pa}
+
+gblup_pa %>%
+  group_by(trait) %>%
+  filter(mean(cor) > 0.3) %>%
+  ungroup() %>%
+  ggplot(., aes(reorder(trait, -cor), cor, fill = aa_cat, col = aa_cat)) +
+  scale_fill_manual(values = cbPalette) + 
+  scale_colour_manual(values = cbPalette) + 
+  geom_point(position = position_jitterdodge(dodge.width = 1), alpha = 0.5) + 
+  geom_boxplot(col = "grey25", position = position_dodge(width = 0.9), 
+               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
+  facet_grid(.~ aa_cat, scales = "free_x", space = "free") + 
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("") +
+  ylab("Predictive ability (r)")
+
+ggsave(paste0("reports/figures/", date, "_moderate_pa.png"), height = 3, width = 6)
+
+```
+
+## Traits with PA < 0.3
+
+```{r gblup low pa}
+
+gblup_pa %>%
+  group_by(trait) %>%
+  filter(mean(cor) < 0.3) %>%
+  ungroup() %>%
+  ggplot(., aes(reorder(trait, -cor), cor, fill = aa_cat, col = aa_cat)) +
+  scale_fill_manual(values = cbPalette) + 
+  scale_colour_manual(values = cbPalette) + 
+  geom_point(position = position_jitterdodge(dodge.width = 1), alpha = 0.5) + 
+  geom_boxplot(col = "grey25", position = position_dodge(width = 0.9), 
+               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
+  facet_grid(.~ aa_cat, scales = "free_x", space = "free") + 
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("") +
+  ylab("Predictive ability (r)")
+
+ggsave(paste0("reports/figures/", date, "_low_pa.png"), height = 3, width = 6)
+
+```
+# multiBLUP - predictive ability 
+
+Compared to GBLUP using a t.test with FDR/Benjamini-Hochberg correction
+
+```{r multiblup}
+# files <- list.files("models/multiblup_cv", pattern = ".profile$", 
+#                     full.names = TRUE, recursive = TRUE)
+# 
+# multiblup <- tibble(file = files) %>%
+#   separate(file, sep = "/", into = c("base", "method", "pathway", "ids"), remove = FALSE) %>%
+#   separate(ids, sep = "_", into = c("cv", "cvnum", "fold", "trait")) %>%
+#   mutate(data = lapply(file, read.table, header = TRUE),
+#          trait = gsub(".profile", "", trait)) %>%
+#   unnest(data) %>%
+#   group_by(pathway, cvnum, fold, trait) %>%
+#   mutate(cor = cor(Phenotype, Profile1, use = "complete.obs")) %>%
+#   summarise_at(., "cor", .funs = mean) %>% 
+#   left_join(., aa_names, by = c("trait" = "id")) %>%
+#   left_join(., gblup_pa, by = c("trait.y" = "trait", "cvnum", "fold")) %>%
+#   select(pathway, cvnum, fold, aa_cat, trait.y, cor.x, cor.y) %>%
+#   rename(trait = trait.y,
+#          multiBLUP = cor.x,
+#          GBLUP = cor.y) %>%
+#   mutate(dif = multiBLUP - GBLUP)
+# 
+# saveRDS(multiblup, file = paste0("models/", date, "_multiblup_pa.rds"))
+
+multiblup <- readRDS("models/20190211_multiblup_pa.rds")
+
+```
+
+
+### traits significant at p < 0.05 (without FDR correction)
+
+```{r multiblup ttest}
+pa_compare <- multiblup %>%
+  gather(key = method, value = cor, GBLUP, multiBLUP) %>%
+  group_by(trait, pathway) %>%
+  summarise_at("cor", funs(gblup_mean = mean(.[method == "GBLUP"]),
+                         multi_mean = mean(.[method == "multiBLUP"]),
+                         dif = multi_mean - gblup_mean, 
+                         p_value = t.test(.[method == "multiBLUP"], .[method == "GBLUP"], 
+                                          alternative = "greater")$p.value)) %>%
+  ungroup() %>%
+  group_by(trait) %>%
+  mutate(p_fdr = p.adjust(p_value, method = "fdr", n = length(p_value)))
+  
+cat("Traits with p-value < 0.05 (no FDR)")
+pa_compare %>%
+  ungroup() %>%
+  filter(p_value < 0.05) %>%
+  arrange(p_value) %>% 
+  kable(digits = 4) %>%
+  kable_styling(bootstrap_options = "striped")
+
+```
+
+### traits significant at p < 0.15 (with FDR correction)
+
+```{r multiblup ttest fdr}
+cat("Traits with p-value < 0.15 (FDR corrected)")
+pa_compare %>%
+  ungroup() %>%
+  filter(p_fdr < 0.15) %>%
+  arrange(p_value) %>% 
+  kable(digits = 4) %>%
+  kable_styling(bootstrap_options = "striped")
+
+```
+
+```{r plot multiblup pa}
+multiblup %>%
+  ungroup() %>%
+  gather(key = method, value = cor, GBLUP, multiBLUP) %>%
+  left_join(., pa_compare, by = c("trait", "pathway")) %>%
+  filter(p_fdr < 0.15) %>%
+  ggplot(aes(trait, cor, fill = method, colour = method)) +
+  scale_colour_manual(values = cbPalette[c(1,3)]) +
+  scale_fill_manual(values = cbPalette[c(1,3)]) + 
+  geom_point(position = position_jitterdodge(dodge.width = 0.6, jitter.width = 0.2), 
+             alpha = 0.5) + 
+  geom_boxplot(col = "grey25", position = position_dodge(width = 0.6), 
+               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top",
+        legend.title = element_blank()) + 
+  xlab("") +
+  ylab("Predictive ability (r)") +
+  facet_wrap(~ pathway, scales = "free_x")
+
+ggsave(paste0("reports/figures/", date, "_multiblup_pa.png"), height = 5, width = 5)
+```
+

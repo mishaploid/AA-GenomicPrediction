@@ -78,6 +78,16 @@ target/
 # exclude data from source control by default
 /data/
 
+# exclude model results (wayyyy to many)
+/models/
+
+# log files
+/slurm_out
+/snakemake_logs
+
+# snakemake files
+.snakemake
+
 # Mac OS-specific storage files
 .DS_Store
 

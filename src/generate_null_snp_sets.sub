@@ -1,0 +1,12 @@
+#!/bin/bash -l
+#SBATCH -D /home/turnersa/data/aagp_ldak
+#SBATCH -J null_sampling
+#SBATCH -o slurm_out/null_sampling%A_%a.out
+#SBATCH --array=1-100
+
+set -e
+set -u
+
+INPUT=`awk "NR==$SLURM_ARRAY_TASK_ID" data/interim/control_sampling.txt`
+
+Rscript scripts/generate_null_snp_sets.R $INPUT
