@@ -18,7 +18,7 @@ Setup
 ------------
 Use PLINK to remove accessions with missing trait data from genotype data:  
 
-`plink --bfile data/external/plinkGeneOmeSubset --keep data/raw/keep_ids --make-bed --out input_nomissing` 
+`plink --bfile data/external/plinkGeneOmeSubset --keep data/raw/keep_ids --make-bed --out data/processed/input_nomissing` 
 
 
 Project Organization (based on Cookiecutter data science)
