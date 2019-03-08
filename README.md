@@ -1,7 +1,7 @@
 Genomic prediction for free amino acid traits in Arabidopsis seeds
 ==============================
 
-Data and scripts necessary to run genomic partitioning and prediciton models on free amino acid traits measuared in a diverse panel of 312 Arabidopsis lines
+Data and scripts necessary to run genomic partitioning and prediciton models on free amino acid traits measured in a diverse panel of 312 Arabidopsis lines
 
 Project Organization (based on Cookiecutter data science)
 ------------
