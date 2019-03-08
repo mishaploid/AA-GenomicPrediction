@@ -5,9 +5,10 @@ Data and scripts necessary to run genomic partitioning and prediciton models on 
 
 Software requirements
 ------------
-* R version 3.5.1
-* Miniconda3 (includes conda version 4.6.7)
-* Snakemake version 5.4.2 (install to virtual environment)
+* R v3.5.1
+* PLINK v1.90b4 64-bit
+* Miniconda3 (includes conda v4.6.7)
+* Snakemake v5.4.2 (install to virtual environment)
 
 To install snakemake in a virtual environment, run:  
 
