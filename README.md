@@ -1,13 +1,29 @@
 Genomic prediction for free amino acid traits in Arabidopsis seeds
 ==============================
 
-Data and scripts necessary to run genomic partitioning and prediciton models on free amino acid traits measured in a diverse panel of 312 Arabidopsis lines
+Data and scripts necessary to run genomic partitioning and prediciton models on free amino acid traits measured in a diverse panel of 312 Arabidopsis lines. 
+
+Software requirements
+------------
+* R version 3.5.1
+* Miniconda3 (includes conda version 4.6.7)
+* Snakemake version 5.4.2 (install to virtual environment)
+
+To install snakemake in a virtual environment, run:  
+
+`conda env create --name multiblup --file environment.yaml`  
+
+Setup
+------------
+Use plink to remove accessions with missing trait data from genotype data:  
+
+`plink --bfile data/external/plinkGeneOmeSubset --keep data/raw/keep_ids --make-bed --out input_nomissing` 
 
 Project Organization (based on Cookiecutter data science)
 ------------
+<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
 
     ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` or `make train`
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
     │   ├── external       <- Data from third party sources.
@@ -47,4 +63,4 @@ Project Organization (based on Cookiecutter data science)
 
 --------
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+
