@@ -16,15 +16,21 @@ To install snakemake in a virtual environment, run:
 
 Setup
 ------------
-Download Arabidopsis Regional Mapping (RegMap) data to `data/external`:  
+Before running the Snakemake workflow, there are a few data processing steps that are not integrated into the workflow.  
+
+1. Download **Arabidopsis Regional Mapping (RegMap) data** to `data/external`:  
 `cd data/external`  
 `wget https://github.com/Gregor-Mendel-Institute/atpolydb/blob/master/250k_snp_data/call_method_75.tar.gz`  
 `tar -xvf call_method_75.tar.gz`
 
-Use PLINK to remove accessions with missing trait data from genotype data:  
+2. Convert SNP matrix to PED/MAP format for use in PLINK:  
+`Rscript genotype_data.R`
 
-`plink --bfile data/external/plinkGeneOmeSubset --keep data/raw/keep_ids --make-bed --out data/processed/input_nomissing` 
+3. Use PLINK to convert PED/MAP to BIM/BED/FAM format and filter:  
+`plink --bfile data/raw/call_method_75_TAIR9 --make-bed --out data/processed/input_nomissing` 
 
+4. Extract TAIR 10 gene annotations and ensembl  using R/biomaRt:  
+`Rscript src/extract_gene_ids.R`
 
 Project Organization (based on Cookiecutter data science)
 ------------
