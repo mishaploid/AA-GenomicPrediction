@@ -16,6 +16,11 @@ To install snakemake in a virtual environment, run:
 
 Setup
 ------------
+Download Arabidopsis Regional Mapping (RegMap) data to `data/external`:  
+`cd data/external`  
+`wget https://github.com/Gregor-Mendel-Institute/atpolydb/blob/master/250k_snp_data/call_method_75.tar.gz`  
+`tar -xvf call_method_75.tar.gz`
+
 Use PLINK to remove accessions with missing trait data from genotype data:  
 
 `plink --bfile data/external/plinkGeneOmeSubset --keep data/raw/keep_ids --make-bed --out data/processed/input_nomissing` 
