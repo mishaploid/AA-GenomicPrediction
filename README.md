@@ -14,6 +14,9 @@ To install snakemake in a virtual environment, run:
 
 `conda env create --name multiblup --file environment.yaml`  
 
+For future use, activate this environment with:
+`source activate multiblup`
+
 Setup
 ------------
 Before running Snakemake, there are a few data processing steps that are not integrated into the workflow.  
