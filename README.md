@@ -16,9 +16,9 @@ To install snakemake in a virtual environment, run:
 
 Setup
 ------------
-Before running the Snakemake workflow, there are a few data processing steps that are not integrated into the workflow.  
+Before running Snakemake, there are a few data processing steps that are not integrated into the workflow.  
 
-1. Download **Arabidopsis Regional Mapping (RegMap) data** to `data/external`:  
+1. Download **Arabidopsis Regional Mapping (RegMap) data** (Horton et al. 2012) to `data/external`:  
 `cd data/external`  
 `wget https://github.com/Gregor-Mendel-Institute/atpolydb/blob/master/250k_snp_data/call_method_75.tar.gz`  
 `tar -xvf call_method_75.tar.gz`
@@ -31,6 +31,10 @@ Before running the Snakemake workflow, there are a few data processing steps tha
 
 4. Extract TAIR 10 gene annotations and ensembl gene ids using R/biomaRt:  
 `Rscript src/extract_gene_ids.R`
+
+5. Merge phenotypes from Angelovici et al. (2013)
+
+6. Sample SNPs for null distribution
 
 Project Organization (based on Cookiecutter data science)
 ------------
