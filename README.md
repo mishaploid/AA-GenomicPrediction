@@ -26,10 +26,10 @@ Before running the Snakemake workflow, there are a few data processing steps tha
 2. Convert SNP matrix to PED/MAP format for use in PLINK:  
 `Rscript genotype_data.R`
 
-3. Use PLINK to convert PED/MAP to BIM/BED/FAM format and filter:  
-`plink --bfile data/raw/call_method_75_TAIR9 --make-bed --out data/processed/input_nomissing` 
+3. Use PLINK to convert PED/MAP to BIM/BED/FAM format and filter on MAF/missingness:  
+`plink --file call_method_75_TAIR9 --recode 12 --maf 0.05 --mind 0.1 --geno 0.1 --nonfounders --make-bed --out atregmap_clean` 
 
-4. Extract TAIR 10 gene annotations and ensembl  using R/biomaRt:  
+4. Extract TAIR 10 gene annotations and ensembl gene ids using R/biomaRt:  
 `Rscript src/extract_gene_ids.R`
 
 Project Organization (based on Cookiecutter data science)
