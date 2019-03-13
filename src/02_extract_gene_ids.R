@@ -54,11 +54,11 @@ getValue <- function(x, chr, data) {
 }
 
 s <- Sys.time()
-chr1 <- sapply(X = snp_query$Position[snp_query$Chromosome==1], FUN = getValue, chr = 1, data = gene_list)
-chr2 <- sapply(X = snp_query$Position[snp_query$Chromosome==2], FUN = getValue, chr = 2, data = gene_list)
-chr3 <- sapply(X = snp_query$Position[snp_query$Chromosome==3], FUN = getValue, chr = 3, data = gene_list)
-chr4 <- sapply(X = snp_query$Position[snp_query$Chromosome==4], FUN = getValue, chr = 4, data = gene_list)
-chr5 <- sapply(X = snp_query$Position[snp_query$Chromosome==5], FUN = getValue, chr = 5, data = gene_list)
+chr1 <- sapply(X = snp_query$position[snp_query$chromosome==1], FUN = getValue, chr = 1, data = gene_list)
+chr2 <- sapply(X = snp_query$position[snp_query$chromosome==2], FUN = getValue, chr = 2, data = gene_list)
+chr3 <- sapply(X = snp_query$position[snp_query$chromosome==3], FUN = getValue, chr = 3, data = gene_list)
+chr4 <- sapply(X = snp_query$position[snp_query$chromosome==4], FUN = getValue, chr = 4, data = gene_list)
+chr5 <- sapply(X = snp_query$position[snp_query$chromosome==5], FUN = getValue, chr = 5, data = gene_list)
 e <- Sys.time()
 e - s
 
@@ -72,18 +72,18 @@ all <- list(chr1, chr2, chr3, chr4, chr5)
 
 snp_gene_ids <- rbindlist(all, idcol = TRUE)
 
-colnames(snp_gene_ids) <- c("Chromosome", "Position", "ensembl_gene_id")
+colnames(snp_gene_ids) <- c("chromosome", "position", "ensembl_gene_id")
 
 snp_gene_ids <- snp_gene_ids %>%
-  mutate_at(c("Chromosome", "Position"), funs(factor(.)))
+  mutate_at(c("chromosome", "position"), funs(factor(.)))
 
 snp_query <- snp_query %>%
-  mutate_at(c("Chromosome", "Position"), funs(factor(.)))
+  mutate_at(c("chromosome", "position"), funs(factor(.)))
 
-snps <- merge(snp_gene_ids, snp_query, by = c("Chromosome", "Position"))
+snps <- merge(snp_gene_ids, snp_query, by = c("chromosome", "position"))
 
 str(snps)
 
-snps$Position <- as.numeric(levels(snps$Position))[snps$Position]
+snps$position <- as.numeric(levels(snps$position))[snps$position]
 
 write.table(snps, "data/processed/snp_gene_ids_tair10.txt", row.names = FALSE)

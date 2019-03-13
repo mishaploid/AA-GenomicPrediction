@@ -1,0 +1,5 @@
+# stem for genotype data (bed/bim/fam format)
+bfile: data/processed/atregmap_clean
+
+# phenotype data
+pheno_file: data/processed/pheno_file
