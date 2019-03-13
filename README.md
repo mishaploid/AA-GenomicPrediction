@@ -1,13 +1,49 @@
 Genomic prediction for free amino acid traits in Arabidopsis seeds
 ==============================
 
-Data and scripts necessary to run genomic partitioning and prediciton models on free amino acid traits in a diverse panel of 312 Arabidopsis lines
+Data and scripts necessary to run genomic partitioning and prediciton models on free amino acid traits measured in a diverse panel of 312 Arabidopsis lines. 
 
-Project Organization
+Software requirements
 ------------
+* R v3.5.1
+* PLINK v1.90b4 64-bit
+* Miniconda3 (includes conda v4.6.7)
+* Snakemake v5.4.2 (install to virtual environment)
+
+To install snakemake in a virtual environment, run:  
+
+`conda env create --name multiblup --file environment.yaml`  
+
+For future use, activate this environment with:
+`source activate multiblup`
+
+Setup
+------------
+Before running Snakemake, there are a few data processing steps that are not integrated into the workflow.  
+
+1. Download **Arabidopsis Regional Mapping (RegMap) data** (Horton et al. 2012) to `data/external`:  
+`cd data/external`  
+`wget https://github.com/Gregor-Mendel-Institute/atpolydb/blob/master/250k_snp_data/call_method_75.tar.gz`  
+`tar -xvf call_method_75.tar.gz`
+
+2. Convert SNP matrix to PED/MAP format for use in PLINK:  
+`Rscript genotype_data.R`
+
+3. Use PLINK to convert PED/MAP to BIM/BED/FAM format and filter on MAF/missingness:  
+`plink --file call_method_75_TAIR9 --recode 12 --maf 0.05 --mind 0.1 --geno 0.1 --nonfounders --make-bed --out atregmap_clean` 
+
+4. Extract TAIR 10 gene annotations and ensembl gene ids using R/biomaRt:  
+`Rscript src/extract_gene_ids.R`
+
+5. Merge phenotypes from Angelovici et al. (2013)
+
+6. Sample SNPs for null distribution
+
+Project Organization (based on Cookiecutter data science)
+------------
+<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
 
     ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` or `make train`
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
     │   ├── external       <- Data from third party sources.
@@ -15,11 +51,11 @@ Project Organization
     │   ├── processed      <- The final, canonical data sets for modeling.
     │   └── raw            <- The original, immutable data dump.
     │
-    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
+    ├── docs               <- manuscript documents
     │
     ├── models             <- Trained and serialized models, model predictions, or model summaries
     │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
+    ├── notebooks          <- R notebooks. Naming convention is a number (for ordering),
     │                         the creator's initials, and a short `-` delimited description, e.g.
     │                         `1.0-jqp-initial-data-exploration`.
     │
@@ -28,30 +64,23 @@ Project Organization
     ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
     │   └── figures        <- Generated graphics and figures to be used in reporting
     │
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
+    ├── environment.yaml   <- The requirements file for reproducing the analysis conda environment
     │
-    ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
     ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
-    │   │
     │   ├── data           <- Scripts to download or generate data
-    │   │   └── make_dataset.py
     │   │
     │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
     │   │
     │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
+    │   │                     predictions
     │   │
     │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │       └── visualize.py
     │
-    └── tox.ini            <- tox file with settings for running tox; see tox.testrun.org
+    |── Snakefile          <- Snakemake workflow to execute analyses 
+    │
+    └── submit.json        <- Configuration settings to run snakemake on a computing cluster
 
 
 --------
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+
