@@ -36,7 +36,7 @@ feature_sizes <- tibble(file = files) %>%
          pathway = str_replace(pathway, ".txt", "")) %>%
   group_by(pathway) %>%
   summarise(size = length(unique(SNP_ID)),
-            n_genes = length(unique(ensembl_gene_id)))
+            n_genes = length(unique(ensembl_gene_id))) %>%
   select(pathway, n_genes, size) %>%
   ungroup() %>%
   write_csv(., "data/processed/random_subsets_summary.csv")
@@ -59,9 +59,9 @@ lr_null <- tibble(file = files) %>%
          null_llik = as.numeric(X2)) %>%
   left_join(., aa_names, by = "id") %>%
   left_join(., gblup_llik, by = c("id", "trait")) %>%
-  select(trait, id, aa_cat, pathway, Num_Kinships, null_llik, gblup_llik) %>%
-  left_join(., null_summary, by = "pathway") %>%
-  mutate(group_size = cut(size, breaks = seq(0, 130000, by = 10000),
+  select(trait, id, pathway, Num_Kinships, null_llik, gblup_llik) %>%
+  left_join(., feature_sizes, by = "pathway") %>%
+  mutate(group_size = cut(size, breaks = seq(0, 50000, by = 10000),
                           include.lowest = TRUE, dig.lab = 10)) %>%
   mutate(LR = 2 * (null_llik - gblup_llik))
 

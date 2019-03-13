@@ -3,7 +3,7 @@
 # Last updated: 6 March 2019
 
 # Phenotype data: Angelovici et al 2013 Plant Cell
-# Genotype data: Atwell et al 2010 Nature
+# Genotype data: Li et al. 2010; Horton et al. 2012
 # Pipeline follows MultiBLUP documentation at dougspeed.com/multiblup/
 
 # CAVEATS (in no specific order)
@@ -12,8 +12,7 @@
 # 2. Requires phenotype/genotype data to be previously downloaded
 # 3. Paths to input files are not generic and will need to be updated if applied to different data
 # 4. SNP sets need to be extracted beforehand
-# 5. Principal components are included for specific traits
-#    Will require some manual editing to remove/modify
+# 5. Principal components are included for specific traits (manual edits required to remove/modify)
 
 # to execute workflow, use submit.sh file or run the following:
 # snakemake --jobs N --rerun-incomplete --latency-wait 60 --cluster-config submit.json
@@ -91,6 +90,47 @@ rule all:
         random = RANDOM, trait = TRAIT)
 
 ################################################################################
+# Prep data for analysis
+
+### Genotype data
+# Filters:
+#   >0.05 minor allele frequency (--maf 0.05)
+#   exclude individuals with >10% missing data (--mind 0.1)
+#   exclude SNPs with missing rate >10% (--geno 0.1)
+
+rule genotype_data:
+    input:
+        "data/external/call_method_75/call_method_75_TAIR9.csv"
+    output:
+        "data/processed/atregmap_clean.bed",
+        "data/processed/atregmap_clean.bim",
+        "data/processed/atregmap_clean.fam",
+        "data/processed/atregmap_clean.map"
+    params:
+        indir = "data/raw/call_method_75_TAIR9",
+        outdir = "data/processed/atregmap_clean"
+    run:
+        shell("Rscript src/01_convert_to_ped.R")
+        shell("plink --file {params.indir} \
+        --recode 12 \
+        --maf 0.05 \
+        --mind 0.1 \
+        --geno 0.1 \
+        --make-bed \
+        --out {params.outdir}")
+
+### Extract TAIR10 annotations
+# Note: TAIR10 has same assembly as TAIR9 with updated annotations
+rule tair_ann:
+    input:
+        "data/processed/atregmap_clean.map"
+    output:
+        "data/processed/gene_list_tair10.txt",
+        "data/processed/snp_gene_ids_tair10.txt"
+    shell:
+        "Rscript src/02_extract_gene_ids.R {input}"
+
+################################################################################
 # Step 1: calculate SNP weightings
 # source: dougspeed.com/get-weightings/
 # input: plink .bed/.bim/.fam files for all genomic SNPs
@@ -129,14 +169,15 @@ rule pca:
         bim = "data/processed/input_nomissing.bim",
         fam = "data/processed/input_nomissing.fam"
     output:
-        pca = "data/processed/pca.vect"
+        pca = "data/processed/pca.vect",
+        pc1 = "data/processed/pca.1",
+        pc2 = "data/processed/pca.2",
+        pc3 = "data/processed/pca.3"
     params:
         bfile = "data/processed/input_nomissing",
         pruned = "data/processed/prune",
         outdir = "data/processed/pca"
     run:
-        # first step in terminal
-        # shell("awk < {input.bim} '{print $2}' > data/processed/all.snps")
         shell("plink --bfile {params.bfile} \
         --extract data/processed/all.snps \
         --make-founders require-2-missing \
@@ -153,29 +194,31 @@ rule pca:
         --pcastem {params.outdir} \
         --grm {params.outdir} \
         --bfile {params.bfile}")
+        shell("awk '{print $1, $2, $3}' {output.pca} > {output.pc1}")
+        shell("awk '{print $1, $2, $4}' {output.pca} > {output.pc2}")
+        shell("awk '{print $1, $2, $5}' {output.pca} > {output.pc3}")
 
 ################################################################################
-# Step 3: GBLUP to estimate variances
+# Step 4: GBLUP model
+### Step 4a: Estimate kinships for prediction using GBLUP
+### Ignores SNP weightings and power set to 0
 
-### Step 3a: Estimate kinships to calculate variances with GBLUP
-### Includes SNP weightings and uses power of -0.25 (see LDAK documentation for details on parameters)
-
-rule gblup_kins_h2:
+rule gblup_kins:
     input:
         bed = "data/processed/input_nomissing.bed",
         bim = "data/processed/input_nomissing.bim",
         fam = "data/processed/input_nomissing.fam"
     output:
-        grm = "models/gblup_h2/kinships.grm.id"
+        grm = "models/gblup/kinships.grm.id"
     params:
         bfile = "data/processed/input_nomissing",
         weights = "data/processed/sections/weights.short",
-        outdir = "models/gblup_h2/kinships"
+        outdir = "models/gblup/kinships"
     run:
         shell("{ldak} --calc-kins-direct {params.outdir} \
         --bfile {params.bfile} \
-        --weights {params.weights} \
-        --power -0.25")
+        --ignore-weights YES \
+        --power 0")
 
 ### Step 3b: GBLUP model to estimate genetic variances
 ### NOTE: Inclusion of principal components based on previous model selection results
@@ -183,7 +226,7 @@ rule gblup_kins_h2:
 rule gblup_h2:
     input:
         pheno = "data/processed/pheno_file",
-        kins = "models/gblup_h2/kinships.grm.id"
+        kins = "models/gblup/kinships.grm.id"
     output:
         h2 = "models/gblup_h2/gblup_{trait}.reml"
     params:
@@ -220,26 +263,6 @@ rule gblup_h2:
 
 ################################################################################
 # Step 4: Genomic prediction (GBLUP model)
-
-### Step 4a: Estimate kinships for prediction using GBLUP
-### Ignores SNP weightings and power set to 0
-
-rule gblup_kins:
-    input:
-        bed = "data/processed/input_nomissing.bed",
-        bim = "data/processed/input_nomissing.bim",
-        fam = "data/processed/input_nomissing.fam"
-    output:
-        grm = "models/gblup/kinships.grm.id"
-    params:
-        bfile = "data/processed/input_nomissing",
-        weights = "data/processed/sections/weights.short",
-        outdir = "models/gblup/kinships"
-    run:
-        shell("{ldak} --calc-kins-direct {params.outdir} \
-        --bfile {params.bfile} \
-        --ignore-weights YES \
-        --power 0")
 
 ### Step 4b: Create training and test sets for cross validation
 ### used 10-fold cross validation with a one-fold hold out
@@ -341,28 +364,24 @@ rule gblup_blup:
         --mpheno {params.trait}")
 
 ################################################################################
-# Step 5: MultiBLUP - heritability model
+# Step 5: MultiBLUP model
 
-### Step 5a: MultiBLUP kinship matrices - heritability
-### calculate kinship matrices for heritability of metabolic pathway SNPs
-### list1 = markers in the feature set
-### list2 = remaining genomic SNPs not in the feature set
-
-rule calc_kins_h2:
+rule multiblup_kins:
     input:
         bed = "data/processed/input_nomissing.bed",
         bim = "data/processed/input_nomissing.bim",
         fam = "data/processed/input_nomissing.fam"
     output:
-        list = "data/processed/pathways/{pathway}/partition.list",
-        k1 = "data/processed/pathways/{pathway}/kinships.1.grm.details",
-        k2 = "data/processed/pathways/{pathway}/kinships.2.grm.details"
+        list = "models/multiblup/{pathway}/partition.list",
+        k1 = "models/multiblup/{pathway}/kinships.1.grm.details",
+        k2 = "models/multiblup/{pathway}/kinships.2.grm.details"
     params:
         bfile = "data/processed/input_nomissing",
-        outdir = "data/processed/pathways/{pathway}",
-        prefix = "data/processed/pathways/{pathway}/list",
-        weights = "data/processed/sections/weights.short"
+        outdir = "models/multiblup/{pathway}",
+        prefix = "data/processed/pathways/{pathway}/list"
     run:
+        # partition kinship matrix
+        # --ignore-weights YES & --power 0 based on LDAK recommendations for prediction
         shell("{ldak} --cut-kins {params.outdir} \
         --bfile {params.bfile} \
         --partition-number 2 \
@@ -370,20 +389,20 @@ rule calc_kins_h2:
         shell("{ldak} --calc-kins {params.outdir} \
         --bfile {params.bfile} \
         --partition 1 \
-        --weights {params.weights} \
-        --power -0.25")
+        --ignore-weights YES \
+        --power 0")
         shell("{ldak} --calc-kins {params.outdir} \
         --bfile {params.bfile} \
         --partition 2 \
-        --weights {params.weights} \
-        --power -0.25")
+        --ignore-weights YES \
+        --power 0")
 
 ### Step 5b: MultiBLUP - REML model to estimate genetic variances (heritability)
 
 rule multiblup_h2:
     input:
         pheno = "data/processed/pheno_file",
-        mgrm = "data/processed/pathways/{pathway}/partition.list"
+        mgrm = "models/multiblup/{pathway}/partition.list"
     output:
         "models/multiblup_h2/{pathway}/multiblup_h2_{trait}.reml"
     params:
@@ -422,36 +441,6 @@ rule multiblup_h2:
 ### list1 = markers in the feature set
 ### list2 = remaining genomic SNPs not in the feature set
 
-rule calc_kins_gp:
-    input:
-        bed = "data/processed/input_nomissing.bed",
-        bim = "data/processed/input_nomissing.bim",
-        fam = "data/processed/input_nomissing.fam"
-    output:
-        list = "models/multiblup_cv/{pathway}/partition.list",
-        k1 = "models/multiblup_cv/{pathway}/kinships.1.grm.details",
-        k2 = "models/multiblup_cv/{pathway}/kinships.2.grm.details"
-    params:
-        bfile = "data/processed/input_nomissing",
-        outdir = "models/multiblup_cv/{pathway}",
-        prefix = "data/processed/pathways/{pathway}/list"
-    run:
-        # partition kinship matrix
-        # --ignore-weights YES & --power 0 based on LDAK recommendations for prediction
-        shell("{ldak} --cut-kins {params.outdir} \
-        --bfile {params.bfile} \
-        --partition-number 2 \
-        --partition-prefix {params.prefix}")
-        shell("{ldak} --calc-kins {params.outdir} \
-        --bfile {params.bfile} \
-        --partition 1 \
-        --ignore-weights YES \
-        --power 0")
-        shell("{ldak} --calc-kins {params.outdir} \
-        --bfile {params.bfile} \
-        --partition 2 \
-        --ignore-weights YES \
-        --power 0")
 
 ### Step 6b: MultiBLUP REML - predictive ability
 ### run reml model for predictive ability
@@ -528,6 +517,13 @@ rule multiblup_blup:
 # AKA the most time consuming step...
 # Random SNP sets need to be generated in advance and stored in separate folders
 
+### generate a uniform distribution of SNP sizes
+rule null_sampling:
+    output:
+        "data/interim/null_group_sizes.txt"
+    script:
+        "src/03_null_group_sizes.R"
+
 ### Step 7a: calculate kinships for control sets
 ### Only interested in partitioning variance
 ### Use weights and power -0.25
@@ -555,23 +551,23 @@ rule calc_kins_control:
         --bfile {params.bfile} \
         --partition 1 \
         --weights {params.weights} \
-        --power -0.25")
+        --power 0")
         shell("{ldak} --calc-kins {params.outdir} \
         --bfile {params.bfile} \
         --partition 2 \
         --weights {params.weights} \
-        --power -0.25")
+        --power 0")
 
 ### Step 7b: REML model for control sets
 
-rule reml_h2_control:
+rule null_h2:
     input:
         pheno = "data/processed/pheno_file",
         mgrm = "data/processed/random_sets/c_{random}/partition.list",
     output:
-        out = "models/reml_null/c_{random}/reml_h2_{trait}.reml",
+        out = "models/null_h2/c_{random}/reml_h2_{trait}.reml",
     params:
-        prefix = "models/reml_null/c_{random}/reml_h2_{trait}",
+        prefix = "models/null_h2/c_{random}/reml_h2_{trait}",
         trait = "{trait}",
         pc1 = "data/processed/pca.1",
         pc2 = "data/processed/pca.2"
