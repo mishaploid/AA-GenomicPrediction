@@ -19,25 +19,12 @@ For future use, activate this environment with:
 
 Setup
 ------------
-Before running Snakemake, there are a few data processing steps that are not integrated into the workflow.  
+Before running Snakemake, download the genotype data:  
 
-1. Download **Arabidopsis Regional Mapping (RegMap) data** (Horton et al. 2012) to `data/external`:  
+To download **Arabidopsis Regional Mapping (RegMap) data** (Horton et al. 2012):  
 `cd data/external`  
 `wget https://github.com/Gregor-Mendel-Institute/atpolydb/blob/master/250k_snp_data/call_method_75.tar.gz`  
 `tar -xvf call_method_75.tar.gz`
-
-2. Convert SNP matrix to PED/MAP format for use in PLINK:  
-`Rscript genotype_data.R`
-
-3. Use PLINK to convert PED/MAP to BIM/BED/FAM format and filter on MAF/missingness:  
-`plink --file call_method_75_TAIR9 --recode 12 --maf 0.05 --mind 0.1 --geno 0.1 --nonfounders --make-bed --out atregmap_clean` 
-
-4. Extract TAIR 10 gene annotations and ensembl gene ids using R/biomaRt:  
-`Rscript src/extract_gene_ids.R`
-
-5. Merge phenotypes from Angelovici et al. (2013)
-
-6. Sample SNPs for null distribution
 
 Project Organization (based on Cookiecutter data science)
 ------------
