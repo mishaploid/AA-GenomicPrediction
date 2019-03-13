@@ -19,9 +19,7 @@ For future use, activate this environment with:
 
 Setup
 ------------
-Before running Snakemake, download the genotype data:  
-
-To download **Arabidopsis Regional Mapping (RegMap) data** (Horton et al. 2012):  
+Before running Snakemake, download the **Arabidopsis Regional Mapping (RegMap) data** (Horton et al. 2012):  
 `cd data/external`  
 `wget https://github.com/Gregor-Mendel-Institute/atpolydb/blob/master/250k_snp_data/call_method_75.tar.gz`  
 `tar -xvf call_method_75.tar.gz`
