@@ -83,7 +83,7 @@ rule pca:
         pruned = "data/processed/prune",
         outdir = "data/processed/pca"
     run:
-        shell("awk < {input.bim} '{print $2}' > data/processed/all.snps")
+        shell("""awk < {input.bim} "{{print \$2}}" > data/processed/all.snps""")
         shell("plink --bfile {params.bfile} \
         --extract data/processed/all.snps \
         --make-founders require-2-missing \
@@ -100,5 +100,5 @@ rule pca:
         --pcastem {params.outdir} \
         --grm {params.outdir} \
         --bfile {params.bfile}")
-        shell("awk '{print $1, $2, $3}' {output.pca} > {output.pc1}")
-        shell("awk '{print $1, $2, $4}' {output.pca} > {output.pc2}")
+        shell("""awk "{{print \$1, \$2, \$3}}" {output.pca} > {output.pc1}""")
+        shell("""awk "{{print \$1, \$2, \$3, \$4}}" {output.pca} > {output.pc2}""")

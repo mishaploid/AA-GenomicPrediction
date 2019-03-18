@@ -1,2 +1,2 @@
-### Config file 
+### Config file
 configfile: "config.yaml"

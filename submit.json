@@ -15,29 +15,35 @@
       "p" : "main",
       "o" : "slurm_out/pca_{wildcards}.%j.out"
     },
-    "gblup_kins_h2" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/gblup_kins_h2/{wildcards}.%j.out"
-    },
     "get_cv" :
     {
       "cpus-per-task" : 1,
       "p" : "main",
       "o" : "slurm_out/get_cv/{wildcards}.%j.out"
     },
+    "gblup_kins" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/gblup/{wildcards}_kins.%j.out"
+    },
+    "gblup_h2" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/gblup/{wildcards}_h2.%j.out"
+    },
     "gblup_reml" :
     {
       "cpus-per-task" : 1,
       "p" : "main",
-      "o" : "slurm_out/gblup_reml/{wildcards}.%j.out"
+      "o" : "slurm_out/gblup/{wildcards}_reml.%j.out"
     },
     "gblup_blup" :
     {
       "cpus-per-task" : 1,
       "p" : "main",
-      "o" : "slurm_out/gblup_blup/{wildcards}.%j.out"
+      "o" : "slurm_out/gblup/{wildcards}_blup.%j.out"
     },
     "calc_kins_h2" :
     {
