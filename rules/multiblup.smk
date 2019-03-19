@@ -1,17 +1,31 @@
-# Step 5: MultiBLUP model
+# Run multiBLUP model for pathways
+
+# export snplists for pathways
+rule multiblup_pathways:
+    input:
+        "data/processed/gene_list_tair10.txt"
+    output:
+        "data/processed/pathways/{pathway}/list1"
+    params:
+        "{pathway}",
+        bincode
+    run:
+        shell("Rscript src/04_select_pathway_snps.R {params}")
+
+# calculate kinships (power = 0, ignore weights YES)
 
 rule multiblup_kins:
     input:
-        bed = "data/processed/input_nomissing.bed",
-        bim = "data/processed/input_nomissing.bim",
-        fam = "data/processed/input_nomissing.fam"
+        bed = config["bfile"] + ".bed",
+        bim = config["bfile"] + ".bim",
+        fam = config["bfile"] + ".fam"
     output:
-        list = "models/multiblup/{pathway}/partition.list",
-        k1 = "models/multiblup/{pathway}/kinships.1.grm.details",
-        k2 = "models/multiblup/{pathway}/kinships.2.grm.details"
+        list = "data/processed/pathways/{pathway}/partition.list",
+        k1 = "data/processed/pathways/{pathway}/kinships.1.grm.details",
+        k2 = "data/processed/pathways/{pathway}/kinships.2.grm.details"
     params:
-        bfile = "data/processed/input_nomissing",
-        outdir = "models/multiblup/{pathway}",
+        bfile = config["bfile"],
+        outdir = "data/processed/pathways/{pathway}",
         prefix = "data/processed/pathways/{pathway}/list"
     run:
         # partition kinship matrix
@@ -31,12 +45,12 @@ rule multiblup_kins:
         --ignore-weights YES \
         --power 0")
 
-### Step 5b: MultiBLUP - REML model to estimate genetic variances (heritability)
+### MultiBLUP - REML model to estimate genetic variances (heritability)
 
 rule multiblup_h2:
     input:
         pheno = "data/processed/pheno_file",
-        mgrm = "models/multiblup/{pathway}/partition.list"
+        mgrm = "data/processed/pathways/{pathway}/partition.list"
     output:
         "models/multiblup_h2/{pathway}/multiblup_h2_{trait}.reml"
     params:
@@ -68,29 +82,21 @@ rule multiblup_h2:
                 --mgrm {input.mgrm}")
 
 ################################################################################
-# Step 6: MultiBLUP - genomic prediction
+# MultiBLUP - genomic prediction
 
-### Step 6a: MultiBLUP kinship matrices - genomic prediction
-### calculate kinship matrices for prediction model using pathway SNPs
-### list1 = markers in the feature set
-### list2 = remaining genomic SNPs not in the feature set
-
-
-### Step 6b: MultiBLUP REML - predictive ability
-### run reml model for predictive ability
+### MultiBLUP REML - predictive ability
 
 rule multiblup_reml:
     input:
         pheno = "data/processed/pheno_file",
-        mgrm = "models/multiblup_cv/{pathway}/partition.list"
+        mgrm = "data/processed/pathways/{pathway}/partition.list"
     output:
-        reml = "models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}.reml"
+        reml = "models/multiblup/{pathway}/cv_{cv}_{index}_{trait}.reml"
     params:
-        out_prefix = "models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}",
+        out_prefix = "models/multiblup/{pathway}/cv_{cv}_{index}_{trait}",
         trait = "{trait}",
         keep = "data/processed/cross_validation/cv_{cv}.train{index}"
     run:
-        # shell("../software/ldak5.linux --reml {params.out_prefix} --pheno {input.pheno} --mpheno {params.trait} --mgrm {input.mgrm} --keep {params.keep}")
         if {wildcards.trait} == 13:
             print("Including PC1 for {trait}")
             shell("{ldak} --reml {params.out_prefix} \
@@ -116,20 +122,20 @@ rule multiblup_reml:
                 --mgrm {input.mgrm} \
                 --keep {params.keep}")
 
-### Step 6c: MultiBLUP - calculate BLUPs
+### MultiBLUP - calculate BLUPs
 ### extract BLUPs from REML model and calculate scores
 ### use output to check correlations with true values (predictive ability)
 
 rule multiblup_blup:
     input:
         pheno = "data/processed/pheno_file",
-        reml = "models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}.reml"
+        reml = "models/multiblup/{pathway}/cv_{cv}_{index}_{trait}.reml"
     output:
-        blup = "models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}.blup",
-        score = "models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}.profile"
+        blup = "models/multiblup/{pathway}/cv_{cv}_{index}_{trait}.blup",
+        score = "models/multiblup/{pathway}/cv_{cv}_{index}_{trait}.profile"
     params:
-        out = "models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}",
-        mgrm = "models/multiblup_cv/{pathway}/partition.list",
+        out = "models/multiblup/{pathway}/cv_{cv}_{index}_{trait}",
+        mgrm = "models/multiblup/{pathway}/partition.list",
         bfile = "data/processed/input_nomissing",
         keep = "data/processed/cross_validation/cv_{cv}.test{index}",
         trait = "{trait}"

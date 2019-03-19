@@ -131,3 +131,9 @@ rule gblup_blup:
         --keep {params.keep} \
         --pheno {input.pheno} \
         --mpheno {params.trait}")
+
+rule gblup_results:
+    output:
+        "reports/gblup.RData"
+    run:
+        shell("Rscript src/03_summarize_gblup.R")

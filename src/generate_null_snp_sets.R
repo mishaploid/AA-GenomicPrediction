@@ -2,7 +2,7 @@
 ## Select SNPs to generate a null distribution
 ## Author: Sarah Turner Hissong
 ## Last modified: 25 December 2018
-################################################################################
+
 ## This script samples gene groups from the data based on annotations from TAIR 10
 ## All SNPs within a gene are sampled and another gene is sampled until a threshold is reached
 ## This will be the input for MultiBLUP to generate an empirical null distribution from 1-50000 markers

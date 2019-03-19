@@ -80,6 +80,7 @@ target/
 
 # exclude model results (wayyyy to many)
 /models/
+*.RData
 
 # log files
 /slurm_out

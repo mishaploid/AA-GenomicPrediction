@@ -45,23 +45,29 @@
       "p" : "main",
       "o" : "slurm_out/gblup/{wildcards}_blup.%j.out"
     },
-    "calc_kins_h2" :
+    "gblup_results" :
     {
       "cpus-per-task" : 1,
       "p" : "main",
-      "o" : "slurm_out/calc_kins_h2/{wildcards}.%j.out"
+      "o" : "slurm_out/gblup_summary.%j.out"
+    },
+    "multiblup_pathways" :
+    {
+      "cpus-per-task" : 4,
+      "p" : "main",
+      "o" : "slurm_out/{wildcards}.%j.out"
+    },
+    "multiblup_kins" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/multiblup_kins/{wildcards}.%j.out"
     },
     "multiblup_h2" :
     {
       "cpus-per-task" : 1,
       "p" : "main",
       "o" : "slurm_out/multiblup_h2/{wildcards}.%j.out"
-    },
-    "calc_kins_gp" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/calc_kins_gp/{wildcards}.%j.out"
     },
     "multiblup_reml" :
     {

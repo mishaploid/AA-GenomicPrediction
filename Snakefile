@@ -21,10 +21,44 @@
 ################################################################################
 # define some variables
 
-# list pathways that will be tested
-# export SNP lists in advance using export_snplists.R
-PATHWAYS = glob_wildcards("data/processed/pathways/{pathway}/list1").pathway
+# dictionary of pathways and MapMan bincodes that will be tested
+PATHWAYS = {
+    "protein_aa_activation": "29.1",
+    "protein_synthesis": "29.2",
+    "protein_targeting": "29.3",
+    "protein_postrans": "29.4",
+#    "protein_degradation": "29.5",
+    "degradation_subtilases": "29.5.1",
+    "degradation_autophagy": "29.5.2",
+    "cys_protease": "29.5.3",
+    "asp_protease": "29.5.4",
+    "ser_protease": "29.5.5",
+    "metallo_protease": "29.5.7",
+    "degradation_AAA": "29.5.9",
+    "degradation_ubiquitin": "29.5.11",
+    "protein_folding": "29.6",
+    "protein_glyco": "29.7",
+    "protein_assembly": "29.8",
+    "aa_transport": "34.3",
+    "tca_cycle": "8",
+    "e_alt_oxidase": "9.4",
+    "isoprenoids": "16.1",
+    "phenylpropanoids": "16.2",
+    "N_containing": "16.4",
+    "S_containing": "16.5",
+    "flavonoids": "16.8",
+    "aa_synthesis": "13.1",
+    "aa_degradation": "13.2",
+    "glycolysis_cystolic": "4.1",
+    "glycolysis_plastid": "4.2",
+    "glycolysis_other": "4.3"
+}
+
 print(PATHWAYS)
+
+def bincode(wildcards):
+	bincode = PATHWAYS[wildcards.pathway]
+	return bincode
 
 # list range of traits (there are 54 traits in this analysis)
 # number refers to a given column in the PLINK formatted phenotype file
@@ -32,7 +66,7 @@ TRAIT = list(range(1,70))
 
 # list range of random subsets to include - we used 5000
 # RANDOM = list(range(1,5001))
-RANDOM = 1
+RANDOM = list(range(1,10))
 
 # how many sets of cross validation - we used 5
 CV = list(range(1,6))
@@ -66,17 +100,19 @@ rule all:
         cv = CV, index = list(range(1,11)), trait = TRAIT),
         # gblup_blup
         expand("models/gblup/cv_{cv}_{index}_{trait}.profile", \
-        cv = CV, index = INDEX, trait = TRAIT)
-        # # calc_kins_h2
-        # expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS),
-        # # multiblup_h2
-        # expand("models/multiblup_h2/{pathway}/multiblup_h2_{trait}.reml", \
-        # pathway = PATHWAYS, trait = TRAIT),
-        # # calc_kins_gp
-        # expand("models/multiblup_cv/{pathway}/partition.list", pathway = PATHWAYS),
-        # # multiblup_reml
-        # expand("models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}.reml", \
-        # pathway = PATHWAYS, cv = CV, index = INDEX, trait = TRAIT),
+        cv = CV, index = INDEX, trait = TRAIT),
+        # gblup_results
+        "reports/gblup.RData",
+        # multiblup_pathways
+        expand("data/processed/pathways/{pathway}/list1", pathway = PATHWAYS.keys()),
+        # multiblup_kins
+        expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys()),
+        # multiblup_h2
+        expand("models/multiblup_h2/{pathway}/multiblup_h2_{trait}.reml", \
+        pathway = PATHWAYS.keys(), trait = TRAIT),
+        # multiblup_reml
+        expand("models/multiblup/{pathway}/cv_{cv}_{index}_{trait}.reml", \
+        pathway = PATHWAYS.keys(), cv = CV, index = INDEX, trait = TRAIT)
         # # multiblup_blup
         # expand("models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}.profile", \
         # pathway = PATHWAYS, cv = CV, index = INDEX, trait = TRAIT),
@@ -90,6 +126,7 @@ include: "rules/common.smk"
 include: "rules/prep_data.smk"
 include: "rules/cross_validation.smk"
 include: "rules/gblup.smk"
+include: "rules/multiblup.smk"
 
 
 ################################################################################
