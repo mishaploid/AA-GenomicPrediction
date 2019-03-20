@@ -94,12 +94,12 @@ rule all:
         # gblup_kins
         "models/gblup/kinships.grm.id",
         # gblup_h2
-        expand("models/gblup_h2/gblup_{trait}.reml", trait = TRAIT),
+        expand("models/gblup_h2/gblup.{trait}.reml", trait = TRAIT),
         # gblup_reml
-        expand("models/gblup/cv_{cv}_{index}_{trait}.reml", \
+        expand("models/gblup/cv_{cv}_{index}.{trait}.reml", \
         cv = CV, index = list(range(1,11)), trait = TRAIT),
         # gblup_blup
-        expand("models/gblup/cv_{cv}_{index}_{trait}.profile", \
+        expand("models/gblup/cv_{cv}_{index}.{trait}.profile", \
         cv = CV, index = INDEX, trait = TRAIT),
         # gblup_results
         "reports/gblup.RData",
@@ -108,14 +108,14 @@ rule all:
         # multiblup_kins
         expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys()),
         # multiblup_h2
-        expand("models/multiblup_h2/{pathway}/multiblup_h2_{trait}.reml", \
+        expand("models/multiblup_h2/{pathway}/multiblup_h2.{trait}.reml", \
         pathway = PATHWAYS.keys(), trait = TRAIT),
         # multiblup_reml
-        expand("models/multiblup/{pathway}/cv_{cv}_{index}_{trait}.reml", \
-        pathway = PATHWAYS.keys(), cv = CV, index = INDEX, trait = TRAIT)
-        # # multiblup_blup
-        # expand("models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}.profile", \
-        # pathway = PATHWAYS, cv = CV, index = INDEX, trait = TRAIT),
+        expand("models/multiblup/{pathway}/cv_{cv}_{index}.{trait}.reml", \
+        pathway = PATHWAYS.keys(), cv = CV, index = INDEX, trait = TRAIT),
+        # multiblup_blup
+        expand("models/multiblup/{pathway}/cv_{cv}_{index}.{trait}.profile", \
+        pathway = PATHWAYS, cv = CV, index = INDEX, trait = TRAIT)
         # # calc_kins_control
         # expand("data/processed/random_sets/c_{random}/partition.list", random = RANDOM),
         # # reml_h2_control

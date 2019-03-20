@@ -67,6 +67,7 @@
     {
       "cpus-per-task" : 1,
       "p" : "main",
+      "p" : "main",
       "o" : "slurm_out/multiblup_h2/{wildcards}.%j.out"
     },
     "multiblup_reml" :
