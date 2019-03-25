@@ -60,9 +60,16 @@ def bincode(wildcards):
 	bincode = PATHWAYS[wildcards.pathway]
 	return bincode
 
-# list range of traits (there are 54 traits in this analysis)
-# number refers to a given column in the PLINK formatted phenotype file
-TRAIT = list(range(1,70))
+# list trait names
+TRAIT = ['ala', 'arg', 'asp', 'gln', 'glu', 'gly', 'his', 'ile', 'leu', 'lys',
+'met', 'phe', 'pro', 'ser', 'thr', 'trp', 'tyr', 'val', 'Total', 'ShikFam',
+'AspFam', 'AspFam_Asp', 'SerFam', 'GluFam', 'GluFam_glu', 'BCAA', 'PyrFam',
+'ala_t', 'arg_t', 'asp_t', 'gln_t', 'glu_t', 'gly_t', 'his_t', 'ile_t', 'leu_t',
+ 'lys_t', 'met_t', 'phe_t', 'pro_t', 'ser_t', 'trp_t', 'tyr_t', 'val_t',
+ 'ile_BCAA', 'leu_BCAA', 'val_BCAA', 'gln_GluFamCorr', 'glu_GluFamCorr', 
+ 'his_GluFam', 'pro_GluFamCorr', 'phe_shik', 'trp_shik', 'tyr_shik', 'gly_SerFam',
+ 'ser_SerFam', 'ala_pyr', 'leu_pyr', 'val_pyr', 'asp_AspFam_aspCorr',
+ 'ile_AspFam_aspCorr', 'lys_AspFam_aspCorr', 'met_AspFam_aspCorr', 'thr_AspFam_aspCorr']
 
 # list range of random subsets to include - we used 5000
 # RANDOM = list(range(1,5001))
@@ -87,35 +94,35 @@ rule all:
         # pca
         "data/processed/pca.vect",
         # get_cv
-        expand("data/processed/cross_validation/cv_{cv}.test{index}", \
+        expand("data/processed/cross_validation/cv{cv}.test{index}", \
         cv = CV, index = INDEX),
-        expand("data/processed/cross_validation/cv_{cv}.train{index}", \
+        expand("data/processed/cross_validation/cv{cv}.train{index}", \
         cv = CV, index = INDEX),
         # gblup_kins
         "models/gblup/kinships.grm.id",
         # gblup_h2
-        expand("models/gblup_h2/gblup.{trait}.reml", trait = TRAIT),
+        expand("models/gblup_h2/{trait}.gblup.reml", trait = TRAIT),
         # gblup_reml
-        expand("models/gblup/cv_{cv}_{index}.{trait}.reml", \
-        cv = CV, index = list(range(1,11)), trait = TRAIT),
+        expand("models/gblup/{trait}.cv{cv}.{index}.reml", \
+        trait = TRAIT, cv = CV, index = INDEX),
         # gblup_blup
-        expand("models/gblup/cv_{cv}_{index}.{trait}.profile", \
+        expand("models/gblup/{trait}.cv{cv}.{index}.profile", \
         cv = CV, index = INDEX, trait = TRAIT),
         # gblup_results
-        "reports/gblup.RData",
+        "reports/gblup.RData"
         # multiblup_pathways
-        expand("data/processed/pathways/{pathway}/list1", pathway = PATHWAYS.keys()),
+        # expand("data/processed/pathways/{pathway}/list1", pathway = PATHWAYS.keys()),
         # multiblup_kins
-        expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys()),
+        # expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys()),
         # multiblup_h2
-        expand("models/multiblup_h2/{pathway}/multiblup_h2.{trait}.reml", \
-        pathway = PATHWAYS.keys(), trait = TRAIT),
+        # expand("models/multiblup_h2/{pathway}/multiblup_h2_{trait}.reml", \
+        # pathway = PATHWAYS.keys(), trait = TRAIT),
         # multiblup_reml
-        expand("models/multiblup/{pathway}/cv_{cv}_{index}.{trait}.reml", \
-        pathway = PATHWAYS.keys(), cv = CV, index = INDEX, trait = TRAIT),
-        # multiblup_blup
-        expand("models/multiblup/{pathway}/cv_{cv}_{index}.{trait}.profile", \
-        pathway = PATHWAYS, cv = CV, index = INDEX, trait = TRAIT)
+        # expand("models/multiblup/{pathway}/cv_{cv}_{index}_{trait}.reml", \
+        # pathway = PATHWAYS.keys(), cv = CV, index = INDEX, trait = TRAIT)
+        # # multiblup_blup
+        # expand("models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}.profile", \
+        # pathway = PATHWAYS, cv = CV, index = INDEX, trait = TRAIT),
         # # calc_kins_control
         # expand("data/processed/random_sets/c_{random}/partition.list", random = RANDOM),
         # # reml_h2_control
@@ -126,7 +133,7 @@ include: "rules/common.smk"
 include: "rules/prep_data.smk"
 include: "rules/cross_validation.smk"
 include: "rules/gblup.smk"
-include: "rules/multiblup.smk"
+#include: "rules/multiblup.smk"
 
 
 ################################################################################

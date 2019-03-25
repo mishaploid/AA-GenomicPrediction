@@ -14,11 +14,11 @@ rule get_cv:
         bim = config["bfile"] + ".bim",
         fam = config["bfile"] + ".fam"
     output:
-        test = "data/processed/cross_validation/cv_{cv}.test{index}",
-        train = "data/processed/cross_validation/cv_{cv}.train{index}"
+        test = "data/processed/cross_validation/cv{cv}.test{index}",
+        train = "data/processed/cross_validation/cv{cv}.train{index}"
     params:
         bfile = config["bfile"],
-        folds = "data/processed/cross_validation/cv_{cv}",
+        folds = "data/processed/cross_validation/cv{cv}",
         numfolds = 10
     run:
         shell("{ldak} --cut-folds {params.folds} \
