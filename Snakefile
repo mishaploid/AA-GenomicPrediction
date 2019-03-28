@@ -61,15 +61,15 @@ def bincode(wildcards):
 	return bincode
 
 # list trait names
-TRAIT = ['ala', 'arg', 'asp', 'gln', 'glu', 'gly', 'his', 'ile', 'leu', 'lys',
+TRAIT = ['ala', 'arg', 'asp', 'gln' , 'glu', 'gly', 'his', 'ile', 'leu', 'lys',
 'met', 'phe', 'pro', 'ser', 'thr', 'trp', 'tyr', 'val', 'Total', 'ShikFam',
 'AspFam', 'AspFam_Asp', 'SerFam', 'GluFam', 'GluFam_glu', 'BCAA', 'PyrFam',
 'ala_t', 'arg_t', 'asp_t', 'gln_t', 'glu_t', 'gly_t', 'his_t', 'ile_t', 'leu_t',
- 'lys_t', 'met_t', 'phe_t', 'pro_t', 'ser_t', 'trp_t', 'tyr_t', 'val_t',
- 'ile_BCAA', 'leu_BCAA', 'val_BCAA', 'gln_GluFamCorr', 'glu_GluFamCorr', 
- 'his_GluFam', 'pro_GluFamCorr', 'phe_shik', 'trp_shik', 'tyr_shik', 'gly_SerFam',
- 'ser_SerFam', 'ala_pyr', 'leu_pyr', 'val_pyr', 'asp_AspFam_aspCorr',
- 'ile_AspFam_aspCorr', 'lys_AspFam_aspCorr', 'met_AspFam_aspCorr', 'thr_AspFam_aspCorr']
+'lys_t', 'met_t', 'phe_t', 'pro_t', 'ser_t', 'trp_t', 'tyr_t', 'val_t',
+'ile_BCAA', 'leu_BCAA', 'val_BCAA', 'gln_GluFamCorr', 'glu_GluFamCorr',
+'his_GluFam', 'pro_GluFamCorr', 'phe_shik', 'trp_shik', 'tyr_shik', 'gly_SerFam',
+'ser_SerFam', 'ala_pyr', 'leu_pyr', 'val_pyr', 'asp_AspFam_aspCorr',
+'ile_AspFam_aspCorr', 'lys_AspFam_aspCorr', 'met_AspFam_aspCorr', 'thr_AspFam_aspCorr']
 
 # list range of random subsets to include - we used 5000
 # RANDOM = list(range(1,5001))
@@ -109,20 +109,22 @@ rule all:
         expand("models/gblup/{trait}.cv{cv}.{index}.profile", \
         cv = CV, index = INDEX, trait = TRAIT),
         # gblup_results
-        "reports/gblup.RData"
+        "reports/gblup.RData",
         # multiblup_pathways
-        # expand("data/processed/pathways/{pathway}/list1", pathway = PATHWAYS.keys()),
+        expand("data/processed/pathways/{pathway}/list1", pathway = PATHWAYS.keys()),
         # multiblup_kins
-        # expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys()),
+        expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys()),
         # multiblup_h2
-        # expand("models/multiblup_h2/{pathway}/multiblup_h2_{trait}.reml", \
-        # pathway = PATHWAYS.keys(), trait = TRAIT),
+        expand("models/multiblup_h2/{pathway}/{trait}.multiblup.reml", \
+        pathway = PATHWAYS.keys(), trait = TRAIT),
         # multiblup_reml
-        # expand("models/multiblup/{pathway}/cv_{cv}_{index}_{trait}.reml", \
-        # pathway = PATHWAYS.keys(), cv = CV, index = INDEX, trait = TRAIT)
-        # # multiblup_blup
-        # expand("models/multiblup_cv/{pathway}/cv_{cv}_{index}_{trait}.profile", \
-        # pathway = PATHWAYS, cv = CV, index = INDEX, trait = TRAIT),
+        expand("models/multiblup/{pathway}/{trait}.cv5.10.reml", \
+        pathway = PATHWAYS.keys(), trait = TRAIT),
+        # multiblup_blup
+        expand("models/multiblup/{pathway}/{trait}.cv5.10.profile", \
+        pathway = PATHWAYS, trait = TRAIT),
+        # multiblup_results
+        "reports/multiblup.RData"
         # # calc_kins_control
         # expand("data/processed/random_sets/c_{random}/partition.list", random = RANDOM),
         # # reml_h2_control
@@ -133,7 +135,7 @@ include: "rules/common.smk"
 include: "rules/prep_data.smk"
 include: "rules/cross_validation.smk"
 include: "rules/gblup.smk"
-#include: "rules/multiblup.smk"
+include: "rules/multiblup.smk"
 
 
 ################################################################################

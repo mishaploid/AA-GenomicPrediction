@@ -54,43 +54,39 @@ rule multiblup_kins:
 
 rule multiblup_h2:
     input:
-        pheno = "data/processed/pheno_file",
+        pheno = config["pheno_file"],
         mgrm = "data/processed/pathways/{pathway}/partition.list"
     output:
-        expand("models/multiblup_h2/{{pathway}}/multiblup_h2.{trait}.reml", trait = TRAIT)
+        "models/multiblup_h2/{pathway}/{trait}.multiblup.reml"
     params:
-        out_prefix = "models/multiblup_h2/{pathway}/multiblup_h2",
-        trait = "-1",
+        out = "models/multiblup_h2/{pathway}/{trait}.multiblup",
+        trait = "{trait}",
         pc1 = "data/processed/pca.1",
         pc2 = "data/processed/pca.2"
     run:
-        shell("{ldak} --reml {params.out_prefix} \
+        shell("{ldak} --reml {params.out} \
         --pheno {input.pheno} \
-        --mpheno {params.trait} \
-        --mgrm {input.mgrm} \
-        --covar {params.pc2} \
-        --dentist YES")
-        # if {wildcards.trait} == 13:
-        #     print("Including PC1 for {trait}")
+        --pheno-name {params.trait} \
+        --mgrm {input.mgrm}")
+
+        # if {wildcards.trait} == ('glu', 'gly', 'val', 'BCAA', 'gly_t', 'val_t'):
+        #     print("Including PC1 and PC2 for {trait}")
         #     shell("{ldak} --reml {params.out_prefix} \
         #     --pheno {input.pheno} \
-        #     --mpheno {params.trait} \
+        #     --pheno-name {params.trait} \
         #     --mgrm {input.mgrm} \
-        #     --covar {params.pc1}")
+        #     --covar {params.pc2}")
         # else:
-        #     if {wildcards.trait} == (5, 6, 18, 26, 43, 54):
-        #         print("Including PC1 and PC2 for {trait}")
+        #     if {wildcards.trait} == 'met':
+        #         print("Including PC1 for {trait}")
         #         shell("{ldak} --reml {params.out_prefix} \
         #         --pheno {input.pheno} \
-        #         --mpheno {params.trait} \
+        #         --pheno-name {params.trait} \
         #         --mgrm {input.mgrm} \
-        #         --covar {params.pc2}")
+        #         --covar {params.pc1}")
         #     else:
         #         print("Including no PCs for {trait}")
-        #         shell("{ldak} --reml {params.out_prefix} \
-        #         --pheno {input.pheno} \
-        #         --mpheno {params.trait} \
-        #         --mgrm {input.mgrm}")
+
 
 ################################################################################
 # MultiBLUP - genomic prediction
@@ -107,44 +103,42 @@ rule multiblup_reml:
         pheno = "data/processed/pheno_file",
         mgrm = "data/processed/pathways/{pathway}/partition.list"
     output:
-        reml = expand("models/multiblup/{{pathway}}/cv_{{cv}}_{{index}}.{trait}.reml", trait = TRAIT)
+        reml = expand("models/multiblup/{{pathway}}/{trait}.cv5.10.reml", trait = TRAIT)
     params:
-        out_prefix = "models/multiblup/{pathway}/cv_{cv}_{index}",
-        trait = "-1",
-        keep = "data/processed/cross_validation/cv_{cv}.train{index}",
+        out = "models/multiblup/{pathway}/",
+        keep = "data/processed/cross_validation/cv",
+        pc1 = "data/processed/pca.1",
         pc2 = "data/processed/pca.2"
     run:
-        shell("{ldak} --reml {params.out_prefix} \
-        --pheno {input.pheno} \
-        --mpheno {params.trait} \
-        --mgrm {input.mgrm} \
-        --covar {params.pc2} \
-        --keep {params.keep} \
-        --dentist YES")
-        # if {wildcards.trait} == 13:
-        #     print("Including PC1 for {trait}")
-        #     shell("{ldak} --reml {params.out_prefix} \
-        #     --pheno {input.pheno} \
-        #     --mpheno {params.trait} \
-        #     --mgrm {input.mgrm} \
-        #     --covar {params.pc1} \
-        #     --keep {params.keep}")
-        # else:
-        #     if {wildcards.trait} == (5, 6, 18, 26, 43, 54):
-        #         print("Including PC1 and PC2 for {trait}")
-        #         shell("{ldak} --reml {params.out_prefix} \
-        #         --pheno {input.pheno} \
-        #         --mpheno {params.trait} \
-        #         --mgrm {input.mgrm} \
-        #         --covar {params.pc2} \
-        #         --keep {params.keep}")
-        #     else:
-        #         print("Including no PCs for {trait}")
-        #         shell("{ldak} --reml {params.out_prefix} \
-        #         --pheno {input.pheno} \
-        #         --mpheno {params.trait} \
-        #         --mgrm {input.mgrm} \
-        #         --keep {params.keep}")
+        for t in TRAIT:
+            for i in CV:
+                for j in INDEX:
+                    shell("{ldak} --reml {params.out}{t}.cv{i}.{j} \
+                    --pheno {input.pheno} \
+                    --pheno-name {t} \
+                    --mgrm {input.mgrm} \
+                    --keep {params.keep}{i}.train{j}")
+
+                # if {wildcards.trait} == ('glu', 'gly', 'val', 'BCAA', 'gly_t', 'val_t'):
+                #     print("Including PC1 and PC2 for {trait}")
+                #     shell("{ldak} --reml {params.out}{i}.{j} \
+                #     --pheno {input.pheno} \
+                #     --pheno-name {params.trait} \
+                #     --mgrm {input.mgrm} \
+                #     --covar {params.pc2} \
+                #     --keep {params.keep}{i}.train{j}")
+                # else:
+                #     if {wildcards.trait} == 'met':
+                #         print("Including PC1 and PC2 for {trait}")
+                #         shell("{ldak} --reml {params.out}{i}.{j} \
+                #         --pheno {input.pheno} \
+                #         --pheno-name {params.trait} \
+                #         --mgrm {input.mgrm} \
+                #         --covar {params.pc1} \
+                #         --keep {params.keep}{i}.train{j}")
+                #     else:
+                #         print("Including no PCs for {trait}")
+
 
 ### MultiBLUP - calculate BLUPs
 ### extract BLUPs from REML model and calculate scores
@@ -153,27 +147,36 @@ rule multiblup_reml:
 rule multiblup_blup:
     input:
         pheno = "data/processed/pheno_file",
-        reml = "models/multiblup/{pathway}/cv_{cv}_{index}.{trait}.reml"
+        model = expand("models/multiblup/{{pathway}}/{trait}.cv5.10.reml", trait = TRAIT),
+        check = expand("models/multiblup/{{pathway}}/{trait}.cv5.10.reml", trait = TRAIT)
     output:
-        blup = "models/multiblup/{pathway}/cv_{cv}_{index}.{trait}.blup",
-        score = "models/multiblup/{pathway}/cv_{cv}_{index}.{trait}.profile"
+        blup = expand("models/multiblup/{{pathway}}/{trait}.cv5.10.blup", trait = TRAIT),
+        score = expand("models/multiblup/{{pathway}}/{trait}.cv5.10.profile", trait = TRAIT)
     params:
-        out = "models/multiblup/{pathway}/cv_{cv}_{index}.{trait}",
+        out = "models/multiblup/{pathway}/",
         mgrm = "data/processed/pathways/{pathway}/partition.list",
         bfile = config["bfile"],
-        keep = "data/processed/cross_validation/cv_{cv}.test{index}",
-        trait = "{trait}",
-        pc2 = "data/processed/pca.2"
+        keep = "data/processed/cross_validation/cv"
     run:
-        shell("{ldak} --calc-blups {params.out} \
-        --mgrm {params.mgrm} \
-        --remlfile {input.reml} \
-        --bfile {params.bfile} \
-        --covar {params.pc2}")
-        shell("{ldak} --calc-scores {params.out} \
-        --bfile {params.bfile} \
-        --power 0 \
-        --scorefile {output.blup} \
-        --keep {params.keep} \
-        --pheno {input.pheno} \
-        --mpheno {params.trait}")
+        for t in TRAIT:
+            for i in CV:
+                for j in INDEX:
+                    shell("{ldak} --calc-blups {params.out}{t}.cv{i}.{j} \
+                    --mgrm {params.mgrm} \
+                    --remlfile {params.out}{t}.cv{i}.{j}.reml \
+                    --bfile {params.bfile}")
+                    shell("{ldak} --calc-scores {params.out}{t}.cv{i}.{j} \
+                    --bfile {params.bfile} \
+                    --power 0 \
+                    --scorefile {params.out}{t}.cv{i}.{j}.blup \
+                    --keep {params.keep}{i}.test{j} \
+                    --pheno {input.pheno} \
+                    --pheno-name {t}")
+
+rule multiblup_results:
+    input:
+        expand("models/multiblup/{pathway}/{trait}.cv5.10.blup", pathway = PATHWAYS.keys(), trait = TRAIT)
+    output:
+        "reports/multiblup.RData"
+    run:
+        shell("Rscript src/04_summarize_multiblup.R")

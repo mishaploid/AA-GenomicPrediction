@@ -82,6 +82,12 @@
       "p" : "main",
       "o" : "slurm_out/multiblup/{wildcards}.%j.out"
     },
+    "multiblup_results" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/multiblup_report.%j.out"
+    },
     "calc_kins_control" :
     {
       "cpus-per-task" : 1,

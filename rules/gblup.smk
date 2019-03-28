@@ -39,27 +39,28 @@ rule gblup_h2:
         trait = "{trait}",
         grm = "models/gblup/kinships"
     run:
-        if {wildcards.trait} == ('glu', 'gly', 'val', 'BCAA', 'gly_t', 'val_t'):
-            print("Including PC1 and PC2 for {trait}")
-            shell("{ldak} --reml {params.out} \
-            --pheno {input.pheno} \
-            --pheno-name {params.trait} \
-            --grm {params.grm} \
-            --covar {input.pc2}")
-        else:
-            if {wildcards.trait} == 'met':
-                print("Including PC1 {trait}")
-                shell("{ldak} --reml {params.out} \
-                --pheno {input.pheno} \
-                --pheno-name {params.trait} \
-                --grm {params.grm} \
-                --covar {input.pc1}")
-            else:
-                print("Including no PCs for {trait}")
-                shell("{ldak} --reml {params.out} \
-                --pheno {input.pheno} \
-                --pheno-name {params.trait} \
-                --grm {params.grm}")
+        shell("{ldak} --reml {params.out} \
+        --pheno {input.pheno} \
+        --pheno-name {params.trait} \
+        --grm {params.grm}")
+        # if {wildcards.trait} == ('glu', 'gly', 'val', 'BCAA', 'gly_t', 'val_t'):
+        #     print("Including PC1 and PC2 for {trait}")
+        #     shell("{ldak} --reml {params.out} \
+        #     --pheno {input.pheno} \
+        #     --pheno-name {params.trait} \
+        #     --grm {params.grm} \
+        #     --covar {input.pc2}")
+        # else:
+        #     if {wildcards.trait} == 'met':
+        #         print("Including PC1 {trait}")
+        #         shell("{ldak} --reml {params.out} \
+        #         --pheno {input.pheno} \
+        #         --pheno-name {params.trait} \
+        #         --grm {params.grm} \
+        #         --covar {input.pc1}")
+        #     else:
+        #         print("Including no PCs for {trait}")
+
 
 ### GBLUP for genomic prediction - REML model
 ### includes cross-validation
@@ -85,30 +86,31 @@ rule gblup_reml:
     run:
         for i in CV:
             for j in INDEX:
-                if {wildcards.trait} == ('glu', 'gly', 'val', 'BCAA', 'gly_t', 'val_t'):
-                    print("Including PC1 and PC2 for {trait}")
-                    shell("{ldak} --reml {params.out}{i}.{j} \
-                    --pheno {input.pheno} \
-                    --pheno-name {params.trait} \
-                    --grm {params.grm} \
-                    --keep {params.keep}{i}.train{j} \
-                    --covar {input.pc2}")
-                else:
-                    if {wildcards.trait} == 'met':
-                        print("Including PC1 for {trait}")
-                        shell("{ldak} --reml {params.out}{i}.{j} \
-                        --pheno {input.pheno} \
-                        --pheno-name {params.trait} \
-                        --grm {params.grm} \
-                        --keep {params.keep}{i}.train{j} \
-                        --covar {input.pc1}")
-                    else:
-                        print("Including no PCs for {trait}")
-                        shell("{ldak} --reml {params.out}{i}.{j} \
-                        --pheno {input.pheno} \
-                        --pheno-name {params.trait} \
-                        --grm {params.grm} \
-                        --keep {params.keep}{i}.train{j}")
+                shell("{ldak} --reml {params.out}{i}.{j} \
+                --pheno {input.pheno} \
+                --pheno-name {params.trait} \
+                --grm {params.grm} \
+                --keep {params.keep}{i}.train{j}")
+                # if {wildcards.trait} == ('glu', 'gly', 'val', 'BCAA', 'gly_t', 'val_t'):
+                #     print("Including PC1 and PC2 for {trait}")
+                #     shell("{ldak} --reml {params.out}{i}.{j} \
+                #     --pheno {input.pheno} \
+                #     --pheno-name {params.trait} \
+                #     --grm {params.grm} \
+                #     --keep {params.keep}{i}.train{j} \
+                #     --covar {input.pc2}")
+                # else:
+                #     if {wildcards.trait} == 'met':
+                #         print("Including PC1 for {trait}")
+                #         shell("{ldak} --reml {params.out}{i}.{j} \
+                #         --pheno {input.pheno} \
+                #         --pheno-name {params.trait} \
+                #         --grm {params.grm} \
+                #         --keep {params.keep}{i}.train{j} \
+                #         --covar {input.pc1}")
+                #     else:
+                #         print("Including no PCs for {trait}")
+
 
 ### Step 4d: Calculate BLUPs
 ### extract BLUPs and calculate scores
@@ -132,26 +134,10 @@ rule gblup_blup:
     run:
         for i in CV:
             for j in INDEX:
-                if {wildcards.trait} == ('glu', 'gly', 'val', 'BCAA', 'gly_t', 'val_t', 'ile_AspFam_aspCorr'):
-                    print("Including PC1 and PC2 for {trait}")
-                    shell("{ldak} --calc-blups {params.out}{i}.{j} \
-                    --grm {params.grm} \
-                    --remlfile {params.reml}{i}.{j}.reml \
-                    --bfile {params.bfile} \
-                    --covar {params.pc2}")
-                else:
-                    if {wildcards.trait} == 'met':
-                        print("Including PC1 for {trait}")
-                        shell("{ldak} --calc-blups {params.out}{i}.{j} \
-                        --grm {params.grm} \
-                        --remlfile {params.reml}{i}.{j}.reml \
-                        --bfile {params.bfile} \
-                        --covar {params.pc1}")
-                    else:
-                        shell("{ldak} --calc-blups {params.out}{i}.{j} \
-                        --grm {params.grm} \
-                        --remlfile {params.reml}{i}.{j}.reml \
-                        --bfile {params.bfile}")
+                shell("{ldak} --calc-blups {params.out}{i}.{j} \
+                --grm {params.grm} \
+                --remlfile {params.reml}{i}.{j}.reml \
+                --bfile {params.bfile}")
                 shell("{ldak} --calc-scores {params.out}{i}.{j} \
                 --bfile {params.bfile} \
                 --power 0 \
@@ -159,10 +145,26 @@ rule gblup_blup:
                 --keep {params.keep}{i}.test{j} \
                 --pheno {input.pheno} \
                 --pheno-name {params.trait}")
+                # if {wildcards.trait} == ('glu', 'gly', 'val', 'BCAA', 'gly_t', 'val_t', 'ile_AspFam_aspCorr'):
+                #     print("Including PC1 and PC2 for {trait}")
+                #     shell("{ldak} --calc-blups {params.out}{i}.{j} \
+                #     --grm {params.grm} \
+                #     --remlfile {params.reml}{i}.{j}.reml \
+                #     --bfile {params.bfile} \
+                #     --covar {params.pc2}")
+                # else:
+                #     if {wildcards.trait} == 'met':
+                #         print("Including PC1 for {trait}")
+                #         shell("{ldak} --calc-blups {params.out}{i}.{j} \
+                #         --grm {params.grm} \
+                #         --remlfile {params.reml}{i}.{j}.reml \
+                #         --bfile {params.bfile} \
+                #         --covar {params.pc1}")
+                #     else:
 
 rule gblup_results:
     input:
-        expand("models/gblup/{trait}.cv{cv}.{index}.blup", trait = TRAIT, cv = CV, index = INDEX)
+        expand("models/gblup/{trait}.cv5.10.blup", trait = TRAIT)
     output:
         "reports/gblup.RData"
     run:

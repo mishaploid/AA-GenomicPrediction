@@ -15,23 +15,26 @@ library(tidyverse)
 gblup_h2 <- tibble(file = list.files(path = "models/gblup_h2",
                                      pattern = ".reml$",
                                      full.names = TRUE)) %>%
-  separate(file, sep = "/|[.]", into = c("source", "method", "metric", "trait", "fill"), remove = FALSE) %>%
+  separate(file, sep = "/|[.]", into = c("source", "method", "trait", "method2", "fill"), remove = FALSE) %>%
   mutate(data = lapply(file, read.table, header = TRUE, skip = 13)) %>%
   unnest(data) %>%
   filter(Component %in% "Her_ALL") %>%
   select(trait, Heritability, Her_SD)
 
+head(gblup_h2)
+
 # log likelihood
 gblup_llik <- tibble(file = list.files(path = "models/gblup_h2",
                                      pattern = ".reml$",
                                      full.names = TRUE)) %>%
-  separate(file, sep = "/|[.]", into = c("source", "method", "metric", "trait", "fill", "fill2"), remove = FALSE) %>%
+  separate(file, sep = "/|[.]", into = c("source", "method", "trait", "metric", "fill", "fill2"), remove = FALSE) %>%
   mutate(data = lapply(file, read.table, header = TRUE)) %>%
   unnest(data) %>%
   filter(Num_Kinships %in% "Alt_Likelihood") %>%
   mutate(gblup_llik = as.numeric(X1)) %>%
   select(trait, gblup_llik)
 
+head(gblup_llik)
 
 # predictive accuracy
 
@@ -46,5 +49,7 @@ gblup_pa <- tibble(file = list.files(path = "models/gblup",
   summarise_at(., "cor", .funs = mean) %>%
   ungroup() %>%
   select(trait, cvnum, fold, cor)
+
+head(gblup_pa)
 
 save(gblup_h2, gblup_llik, gblup_pa, file = "reports/gblup.RData")
