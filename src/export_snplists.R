@@ -10,14 +10,19 @@ dir <- paste0("data/processed/pathways/", unlist(strsplit(path, "/"))[4])
 dir.create(dir)
 
 # all genomic SNPs
-all <- read.table("data/processed/input_nomissing.bim")[,2]
+all <- read.table("data/processed/atregmap_clean.bim")[,2]
+str(all)
 
 # SNPs in feature set
 list1 <- read.table(path, header = TRUE)[,2]
 write.table(list1, paste0(dir, "/list1"), quote = FALSE,
             row.names = FALSE, col.names = FALSE)
 
+length(list1)
+
 # SNPs not in feature set
 list2 <- all[!all %in% list1]
 write.table(list2, paste0(dir, "/list2"), quote = FALSE,
             row.names = FALSE, col.names = FALSE)
+
+length(list2) 

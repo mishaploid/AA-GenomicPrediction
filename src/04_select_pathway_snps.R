@@ -17,7 +17,7 @@ gene_list <- read.table("data/processed/gene_list_tair10.txt", header = TRUE)
 
 ################################################################################
 ## Function to extract genes for protein related pathways
-## input: data frame with chromosome name, ensembl gene id, external gene name, 
+## input: data frame with chromosome name, ensembl gene id, external gene name,
 ## start/end position, and GO category names (name_1006)
 ################################################################################
 
@@ -36,7 +36,7 @@ extract_genes <- function(genes, category, go_term, snp_data, filename) {
                                         "position" = "mx"),
                     match_fun = list(`==`, `>=`, `<=`)) %>%
     droplevels() %>%
-    dplyr::select(chromosome, snp_id, position, ensembl_gene_id.x, 
+    dplyr::select(chromosome, snp_id, position, ensembl_gene_id.x,
                   ensembl_gene_id.y, external_gene_name, BINCODE) %>%
     distinct(., snp_id, .keep_all = TRUE)
 
@@ -58,7 +58,7 @@ head(cats)
 # merge with gene_list
 gene_cats <- merge(gene_list, cats, by.x = "ensembl_gene_id", by.y = "IDENTIFIER")
 
-# read in snps
+# read in snps and order by Chromosome/Position
 snps <- read.table("data/processed/snp_gene_ids_tair10.txt", header = TRUE) %>%
   mutate_at(c("chromosome"), funs(factor(.))) %>%
   mutate(position = as.integer(position)) %>%
@@ -66,7 +66,6 @@ snps <- read.table("data/processed/snp_gene_ids_tair10.txt", header = TRUE) %>%
 
 # pull out annotation categories based on Mapman categories
 pathway <- extract_genes(gene_cats, c(args[2]), "BINCODE", snps, args[1])
-
 
 # export snplists for LDAK
 dir <- paste0("data/processed/pathways/", args[1])
@@ -78,7 +77,7 @@ pathway %>%
 
 snps %>%
   select(snp_id) %>%
-  filter(!snp_id %in% pathway["snp_id"]) %>%
+  filter(!snp_id %in% pathway$snp_id) %>%
   write.table(., paste0(dir, "/list2"), quote = FALSE, row.names = FALSE, col.names = FALSE)
 
 

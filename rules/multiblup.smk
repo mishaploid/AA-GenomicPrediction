@@ -179,4 +179,4 @@ rule multiblup_results:
     output:
         "reports/multiblup.RData"
     run:
-        shell("Rscript src/04_summarize_multiblup.R")
+        shell("Rscript src/05_summarize_multiblup.R")

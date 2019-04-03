@@ -11,14 +11,14 @@
 #    Recommendation is to run just one or a few of the random subsets to start with, then scale up
 # 2. Requires phenotype/genotype data to be previously downloaded
 # 3. Paths to input files are not generic and will need to be updated if applied to different data
-# 4. SNP sets need to be extracted beforehand
-# 5. Principal components are included for specific traits (manual edits required to remove/modify)
 
 # to execute workflow, use submit.sh file or run the following:
 # snakemake --jobs N --rerun-incomplete --latency-wait 60 --cluster-config submit.json
 # --cluster "sbatch -p {cluster.p} -o {cluster.o} --cpus-per-task {cluster.cpus-per-task}" -p &>> snakemake_logs/yymmdd.multiblup.log"
 
 ################################################################################
+import numpy as np
+
 # define some variables
 
 # dictionary of pathways and MapMan bincodes that will be tested
@@ -81,6 +81,9 @@ CV = list(range(1,6))
 # fold for each cross validation - we used 10 fold (total of 50 cross validations)
 INDEX = list(range(1,11))
 
+# index for null distribution gene group sampling
+NULL = np.arange(1, 5001, 50).tolist()
+
 # directory for ldak software
 ldak = "../software/ldak5.linux"
 
@@ -124,115 +127,19 @@ rule all:
         expand("models/multiblup/{pathway}/{trait}.cv5.10.profile", \
         pathway = PATHWAYS, trait = TRAIT),
         # multiblup_results
-        "reports/multiblup.RData"
-        # # calc_kins_control
-        # expand("data/processed/random_sets/c_{random}/partition.list", random = RANDOM),
-        # # reml_h2_control
-        # expand("models/reml_null/c_{random}/reml_h2_{trait}.reml", \
-        # random = RANDOM, trait = TRAIT)
+        "reports/multiblup.RData",
+        # null_sampling
+        "data/interim/null_group_sizes.txt",
+        expand("data/processed/random_sets/null_{null}.txt", null = NULL),
+        # calc_kins_control
+        expand("data/processed/random_sets/c_{random}/partition.list", random = RANDOM),
+        # reml_h2_control
+        expand("models/null_h2/c_{random}/{trait}.h2.reml", \
+        random = RANDOM, trait = TRAIT)
 
 include: "rules/common.smk"
 include: "rules/prep_data.smk"
 include: "rules/cross_validation.smk"
 include: "rules/gblup.smk"
 include: "rules/multiblup.smk"
-
-
-################################################################################
-# Step 7: Create an empirical null distribution
-# AKA the most time consuming step...
-# Random SNP sets need to be generated in advance and stored in separate folders
-
-### generate a uniform distribution of SNP sizes
-# rule null_sampling:
-#     output:
-#         "data/interim/null_group_sizes.txt"
-#     script:
-#         "src/03_null_group_sizes.R"
-#
-# ### Step 7a: calculate kinships for control sets
-# ### Only interested in partitioning variance
-# ### Use weights and power -0.25
-#
-# rule calc_kins_control:
-#     input:
-#         bed = "data/processed/input_nomissing.bed",
-#         bim = "data/processed/input_nomissing.bim",
-#         fam = "data/processed/input_nomissing.fam"
-#     output:
-#         list = "data/processed/random_sets/c_{random}/partition.list",
-#         k1 = "data/processed/random_sets/c_{random}/kinships.1.grm.details",
-#         k2 = "data/processed/random_sets/c_{random}/kinships.2.grm.details"
-#     params:
-#         bfile = "data/processed/input_nomissing",
-#         outdir = "data/processed/random_sets/c_{random}",
-#         prefix = "data/processed/random_sets/c_{random}/list",
-#         weights = "data/processed/sections/weights.short"
-#     run:
-#         shell("{ldak} --cut-kins {params.outdir} \
-#         --bfile {params.bfile} \
-#         --partition-number 2 \
-#         --partition-prefix {params.prefix}")
-#         shell("{ldak} --calc-kins {params.outdir} \
-#         --bfile {params.bfile} \
-#         --partition 1 \
-#         --weights {params.weights} \
-#         --power 0")
-#         shell("{ldak} --calc-kins {params.outdir} \
-#         --bfile {params.bfile} \
-#         --partition 2 \
-#         --weights {params.weights} \
-#         --power 0")
-#
-# ### Step 7b: REML model for control sets
-#
-# rule null_h2:
-#     input:
-#         pheno = "data/processed/pheno_file",
-#         mgrm = "data/processed/random_sets/c_{random}/partition.list",
-#     output:
-#         out = "models/null_h2/c_{random}/reml_h2_{trait}.reml",
-#     params:
-#         prefix = "models/null_h2/c_{random}/reml_h2_{trait}",
-#         trait = "{trait}",
-#         pc1 = "data/processed/pca.1",
-#         pc2 = "data/processed/pca.2"
-#     run:
-#         if {wildcards.trait} == 13:
-#             print("Including PC1 for {trait}")
-#             shell("{ldak} --reml {params.prefix} \
-#             --pheno {input.pheno} \
-#             --mpheno {params.trait} \
-#             --mgrm {input.mgrm} \
-#             --dentist YES \
-#             --covar {params.pc1}")
-#         else:
-#             if {wildcards.trait} == (5, 6, 18, 26, 43, 54):
-#                 print("Including PC1 and PC2 for {trait}")
-#                 shell("{ldak} --reml {params.prefix} \
-#                 --pheno {input.pheno} \
-#                 --mpheno {params.trait} \
-#                 --mgrm {input.mgrm} \
-#                 --dentist YES \
-#                 --covar {params.pc2}")
-#             else:
-#                 print("Including no PCs for {trait}")
-#                 shell("{ldak} --reml {params.prefix} \
-#                 --pheno {input.pheno} \
-#                 --mpheno {params.trait} \
-#                 --mgrm {input.mgrm} \
-#                 --dentist YES")
-
-################################################################################
-# THE END!
-# Artwork: Clover patch by Joan G. Stark
-#         ,,,                      ,,,
-#        {{{}}    ,,,             {{{}}    ,,,
-#     ,,, ~Y~    {{{}},,,      ,,, ~Y~    {{{}},,,
-#    {{}}} |/,,,  ~Y~{{}}}    {{}}} |/,,,  ~Y~{{}}}
-#     ~Y~ \|{{}}}/\|/ ~Y~  ,,, ~Y~ \|{{}}}/\|/ ~Y~  ,,,
-#     \|/ \|/~Y~  \|,,,|/ {{}}}\|/ \|/~Y~  \|,,,|/ {{}}}
-#     \|/ \|/\|/  \{{{}}/  ~Y~ \|/ \|/\|/  \{{{}}/  ~Y~
-#     \|/\\|/\|/ \\|~Y~//  \|/ \|/\\|/\|/ \\|~Y~//  \|/
-#     \|//\|/\|/,\\|/|/|// \|/ \|//\|/\|/,\\|/|/|// \|/
-# jgs^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+include: "rules/null_distribution.smk"

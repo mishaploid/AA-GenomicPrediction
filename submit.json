@@ -88,11 +88,23 @@
       "p" : "main",
       "o" : "slurm_out/multiblup_report.%j.out"
     },
-    "calc_kins_control" :
+    "null_sampling" :
     {
       "cpus-per-task" : 1,
       "p" : "main",
-      "o" : "slurm_out/calc_kins_control/{wildcards}.%j.out"
+      "o" : "slurm_out/null_sampling.%j.out"
+    },
+    "null_gene_groups" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/null_gene_groups/{wildcards}.%j.out"
+    },
+    "calc_kins_null" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/calc_kins_null/{wildcards}.%j.out"
     },
     "reml_h2_control" :
     {
