@@ -15,6 +15,8 @@ rule null_sampling:
 # stops once a target threshold of SNPs is achieved (output from null_sampling)
 
 rule null_gene_groups:
+    input:
+        "data/processed/snp_gene_ids_tair10.txt"
     output:
         "data/processed/random_sets/null_{null}.txt"
     params:
@@ -25,7 +27,8 @@ rule null_gene_groups:
 ### calculate kinships for control sets
 ### Only interested in partitioning variance
 ### Ignore weightings and power = 0
-# consider looping - for r in range(NULL+49):
+# need to improve efficiency of this step...
+# consider looping - e.g. for r in range(NULL+49):
 
 rule calc_kins_null:
     input:
@@ -33,13 +36,14 @@ rule calc_kins_null:
         bim = config["bfile"] + ".bim",
         fam = config["bfile"] + ".fam"
     output:
-        list = expand("data/processed/random_sets/c_{random}/partition.list", random = RANDOM),
-        k1 = expand("data/processed/random_sets/c_{random}/kinships.1.grm.details", random = RANDOM),
-        k2 = expand("data/processed/random_sets/c_{random}/kinships.2.grm.details", random = RANDOM)
+        list = expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
+        k1 = expand("data/processed/random_sets/c_{random}/kinships.1.grm.details", random = 5000),
+        k2 = expand("data/processed/random_sets/c_{random}/kinships.2.grm.details", random = 5000)
     params:
         bfile = config["bfile"],
         prefix = "data/processed/random_sets/c_"
     run:
+        for r in RANDOM:
             shell("{ldak} --cut-kins {params.prefix}{r} \
             --bfile {params.bfile} \
             --partition-number 2 \
@@ -60,7 +64,7 @@ rule calc_kins_null:
 rule null_h2:
     input:
         pheno = "data/processed/pheno_file",
-        mgrm = expand("data/processed/random_sets/c_{random}/partition.list", random = RANDOM),
+        mgrm = expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
     output:
         out = expand("models/null_h2/c_{random}/{{trait}}.h2.reml", random = RANDOM),
     params:

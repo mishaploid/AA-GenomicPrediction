@@ -104,12 +104,12 @@
     {
       "cpus-per-task" : 1,
       "p" : "main",
-      "o" : "slurm_out/calc_kins_null/{wildcards}.%j.out"
+      "o" : "slurm_out/null_kinships_{wildcards}.%j.out"
     },
-    "reml_h2_control" :
+    "null_h2" :
     {
       "cpus-per-task" : 1,
       "p" : "main",
-      "o" : "slurm_out/reml_h2_control/{wildcards}.%j.out"
+      "o" : "slurm_out/null_h2/{wildcards}.%j.out"
     }
 }

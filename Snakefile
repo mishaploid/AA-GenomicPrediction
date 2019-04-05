@@ -73,7 +73,7 @@ TRAIT = ['ala', 'arg', 'asp', 'gln' , 'glu', 'gly', 'his', 'ile', 'leu', 'lys',
 
 # list range of random subsets to include - we used 5000
 # RANDOM = list(range(1,5001))
-RANDOM = list(range(1,10))
+RANDOM = list(range(1,5001))
 
 # how many sets of cross validation - we used 5
 CV = list(range(1,6))
@@ -132,10 +132,10 @@ rule all:
         "data/interim/null_group_sizes.txt",
         expand("data/processed/random_sets/null_{null}.txt", null = NULL),
         # calc_kins_control
-        expand("data/processed/random_sets/c_{random}/partition.list", random = RANDOM),
+        expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
         # reml_h2_control
         expand("models/null_h2/c_{random}/{trait}.h2.reml", \
-        random = RANDOM, trait = TRAIT)
+        random = 5000, trait = TRAIT)
 
 include: "rules/common.smk"
 include: "rules/prep_data.smk"
