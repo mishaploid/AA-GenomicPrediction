@@ -6,12 +6,6 @@
 library(tidyverse)
 library(broom)
 
-# read in amino acid trait ids
-# aa_names <- data.frame(trait = colnames(read.table("data/processed/pheno_file",
-#                                                    header = TRUE))) %>%
-#   filter(!trait %in% c("trait", "FID", "IID")) %>%
-#   mutate(id = as.character(1:length(trait)))
-
 # heritability
 gblup_h2 <- tibble(file = list.files(path = "models/gblup_h2",
                                      pattern = ".reml$",

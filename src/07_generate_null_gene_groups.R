@@ -45,32 +45,39 @@ sample_genes <- function(data, n, bprange) {
 # loop through gene sets specified by commandArgs
 
 for (i in args[1]:end) {
-  # if(file.exists(paste0("data/processed/random_sets/null_", i, ".txt"))) {
-  #   cat("file already exists for sample", i, "\n")
-  #   next
-  # }
-  # tryCatch({
-  # print(snp_number[i,])
-  # random <- sample_genes(snps, n = snp_number[i,], bprange = 2500) %>%
-  # arrange(chromosome, position)
-  # dir.create("data/processed/random_sets", showWarnings = FALSE)
-  # write.table(random, paste0("data/processed/random_sets/null_", i, ".txt"))
+  if(file.exists(paste0("data/processed/random_sets/null_", i, ".txt"))) {
+    cat("file already exists for sample", i, "\n")
+    next
+  }
+  tryCatch({
+  print(snp_number[i,])
+  random <- sample_genes(snps, n = snp_number[i,], bprange = 2500) %>%
+  arrange(chromosome, position)
+
+  dir.create("data/processed/random_sets", showWarnings = FALSE)
+  
+  write.table(random, paste0("data/processed/random_sets/null_", i, ".txt"))
 
   # export snplists for LDAK
   dir <- paste0("data/processed/random_sets/c_", i)
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
 
-  ### edit output
-    random <- read.table(paste0(dir, "/list1"))
-
-  # random %>%
-  #   select(snp_id) %>%
-  #   write.table(., paste0(dir, "/list1"), quote = FALSE, row.names = FALSE, col.names = FALSE)
+  random %>%
+    select(snp_id) %>%
+    unique() %>%
+    write.table(., paste0(dir, "/list1"), quote = FALSE, row.names = FALSE, col.names = FALSE)
 
   snps %>%
     select(snp_id) %>%
     filter(!snp_id %in% random$V1) %>% # filter(!snp_id %in% random$snp_id) %>%
     write.table(., paste0(dir, "/list2"), quote = FALSE, row.names = FALSE, col.names = FALSE)
 
-  # }, error = function(e){cat("ERROR:", conditionMessage(e), "\n")})
+  }, error = function(e){cat("ERROR:", conditionMessage(e), "\n")})
+}
+
+
+for (f in files){
+foo <- read.table(paste0(f), header = FALSE)
+print(length(foo$V1))
+foo %>% select(V1) %>% unique() %>% write.table(., paste0(f), row.names = FALSE, col.names = FALSE, quote = FALSE)
 }

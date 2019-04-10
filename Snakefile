@@ -127,15 +127,15 @@ rule all:
         expand("models/multiblup/{pathway}/{trait}.cv5.10.profile", \
         pathway = PATHWAYS, trait = TRAIT),
         # multiblup_results
-        "reports/multiblup.RData",
-        # null_sampling
-        "data/interim/null_group_sizes.txt",
-        expand("data/processed/random_sets/null_{null}.txt", null = NULL),
-        # calc_kins_control
-        expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
-        # reml_h2_control
-        expand("models/null_h2/c_{random}/{trait}.h2.reml", \
-        random = 5000, trait = TRAIT)
+        "reports/multiblup.RData"
+        # # null_sampling
+        # "data/interim/null_group_sizes.txt",
+        # expand("data/processed/random_sets/null_{null}.txt", null = NULL),
+        # # calc_kins_control
+        # expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
+        # # reml_h2_control
+        # expand("models/null_h2/c_{random}/{trait}.h2.reml", \
+        # random = 5000, trait = TRAIT)
 
 include: "rules/common.smk"
 include: "rules/prep_data.smk"
