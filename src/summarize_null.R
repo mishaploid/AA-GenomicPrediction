@@ -50,12 +50,15 @@ lr_null <- tibble(file = files) %>%
 head(lr_null)
 
 ## read in variance component estimates
+files <- list.files(path = "models/null_h2", pattern = ".share$",
+                    full.names = TRUE, recursive = TRUE)
+
 h2_null <- tibble(file = files) %>%
   separate(file, sep = "/|[.]", into = c("dir", "source", "pathway", "trait", "metric", "model"), remove = FALSE) %>%
-  mutate(data = lapply(file, read.table, header = TRUE, skip = 13)) %>%
+  mutate(data = lapply(file, read.table, header = TRUE)) %>%
   unnest(data) %>%
   left_join(., feature_sizes, by = "pathway") %>%
-  select(trait, pathway, size, n_genes, Component, Heritability, Her_SD)
+  select(trait, pathway, size, n_genes, Component, Share, SD)
 
 head(h2_null)
 
