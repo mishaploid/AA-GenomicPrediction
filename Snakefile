@@ -22,24 +22,32 @@ import numpy as np
 # define some variables
 
 # dictionary of pathways and MapMan bincodes that will be tested
+# take care when specifying bincodes - want to make sure it is grepping the correct value
+# worth double checking when you pull annotations using src/02_select_pathway_snps
+# e.g. if you want all annotations in bin 8, just use '8', if you want annotations in '29.5.1',
+# specify the end of the line using '29.5.1$' or it will also pull '29.5.11'
+
+# to check:
+# foo <- tibble(file = files) %>% separate(file, sep = "/", into = c("dir", "pathway", "filename"), remove = FALSE) %>% filter(!pathway %in% "old") %>% mutate(data = lapply(file, read.table, header = TRUE, colClasses = "character"))
+# bar <- foo%>% group_by(pathway) %>% distinct(BINCODE, NAME)
 PATHWAYS = {
     "protein_aa_activation": "29.1",
     "protein_synthesis": "29.2",
     "protein_targeting": "29.3",
     "protein_postrans": "29.4",
 #    "protein_degradation": "29.5",
-    "degradation_subtilases": "29.5.1",
-    "degradation_autophagy": "29.5.2",
-    "cys_protease": "29.5.3",
-    "asp_protease": "29.5.4",
-    "ser_protease": "29.5.5",
-    "metallo_protease": "29.5.7",
-    "degradation_AAA": "29.5.9",
-    "degradation_ubiquitin": "29.5.11",
+    "degradation_subtilases": "29.5.1$",
+    "degradation_autophagy": "29.5.2$",
+    "cys_protease": "29.5.3$",
+    "asp_protease": "29.5.4$",
+    "ser_protease": "29.5.5$",
+    "metallo_protease": "29.5.7$",
+    "degradation_AAA": "29.5.9$",
+    "degradation_ubiquitin": "29.5.11$",
     "protein_folding": "29.6",
     "protein_glyco": "29.7",
     "protein_assembly": "29.8",
-    "aa_transport": "34.3",
+    "aa_transport": "34.3$",
     "tca_cycle": "8",
     "e_alt_oxidase": "9.4",
     "isoprenoids": "16.1",

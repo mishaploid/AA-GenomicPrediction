@@ -70,4 +70,23 @@ multiblup_pa <- tibble(file = list.files(path = "models/multiblup",
 
 head(multiblup_pa)
 
-save(multiblup_h2, multiblup_llik, multiblup_pa, file = "reports/multiblup.RData")
+# number of snps/genes in each pathway
+files <- list.files(path = "data/processed/pathways", pattern = "*.txt", full.names = TRUE,
+                    recursive = TRUE)
+
+pathways <- tibble(file = files) %>%
+  separate(file, sep = "/", into = c("dir", "dir2", "dir3", "pathway", "pathway2"),
+           remove = FALSE) %>%
+  mutate(data = lapply(file, read.table, header = TRUE),
+         data = lapply(data, mutate_all, as.character)) %>%
+  unnest(data) %>%
+  group_by(pathway) %>%
+  summarise(size = length(unique(snp_id)),
+            n_genes = length(unique(ensembl_gene_id.x))) %>%
+  select(pathway, n_genes, size) %>%
+  ungroup() %>%
+  write_csv(., "reports/pathways_summary.csv")
+
+head(pathways)
+
+save(multiblup_h2, multiblup_llik, multiblup_pa, pathways, file = "reports/multiblup.RData")

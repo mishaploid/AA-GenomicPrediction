@@ -22,7 +22,7 @@ gene_list <- read.table("data/processed/gene_list_tair10.txt", header = TRUE)
 ################################################################################
 
 extract_genes <- function(genes, category, go_term, snp_data, filename) {
-  tmp <- genes[grep(paste(category), genes[,go_term]),] %>%
+  tmp <- genes[grep(paste0('^', category), genes[,go_term]),] %>%
     distinct(ensembl_gene_id, .keep_all = TRUE) %>%
     mutate_at(c("chromosome_name", "ensembl_gene_id"), funs(factor(.))) %>%
     mutate(mn = start_position - 2500,
@@ -37,7 +37,7 @@ extract_genes <- function(genes, category, go_term, snp_data, filename) {
                     match_fun = list(`==`, `>=`, `<=`)) %>%
     droplevels() %>%
     dplyr::select(chromosome, snp_id, position, ensembl_gene_id.x,
-                  ensembl_gene_id.y, external_gene_name, BINCODE) %>%
+                  ensembl_gene_id.y, external_gene_name, BINCODE, NAME) %>%
     distinct(., snp_id, .keep_all = TRUE)
 
   dir.create(paste0("data/processed/pathways/", filename), recursive = TRUE)

@@ -18,7 +18,8 @@ rule multiblup_kins:
     input:
         bed = config["bfile"] + ".bed",
         bim = config["bfile"] + ".bim",
-        fam = config["bfile"] + ".fam"
+        fam = config["bfile"] + ".fam",
+        snps = "data/processed/pathways/{pathway}/list1"
     output:
         list = "data/processed/pathways/{pathway}/partition.list",
         k1 = "data/processed/pathways/{pathway}/kinships.1.grm.details",
@@ -57,17 +58,15 @@ rule multiblup_h2:
         pheno = config["pheno_file"],
         mgrm = "data/processed/pathways/{pathway}/partition.list"
     output:
-        "models/multiblup_h2/{pathway}/{trait}.multiblup.reml"
+        expand("models/multiblup_h2/{{pathway}}/{trait}.multiblup.reml", trait = TRAIT)
     params:
-        out = "models/multiblup_h2/{pathway}/{trait}.multiblup",
-        trait = "{trait}",
-        pc1 = "data/processed/pca.1",
-        pc2 = "data/processed/pca.2"
+        out = "models/multiblup_h2/{pathway}/"
     run:
-        shell("{ldak} --reml {params.out} \
-        --pheno {input.pheno} \
-        --pheno-name {params.trait} \
-        --mgrm {input.mgrm}")
+        for t in TRAIT:
+            shell("{ldak} --reml {params.out}{t}.multiblup \
+            --pheno {input.pheno} \
+            --pheno-name {t} \
+            --mgrm {input.mgrm}")
 
         # if {wildcards.trait} == ('glu', 'gly', 'val', 'BCAA', 'gly_t', 'val_t'):
         #     print("Including PC1 and PC2 for {trait}")
