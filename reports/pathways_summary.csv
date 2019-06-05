@@ -1,5 +1,7 @@
 pathway,n_genes,size
+aa_deg_bcat,158,1070
 aa_degradation,156,1055
+aa_syn_nobcat,379,2108
 aa_synthesis,380,2123
 aa_transport,144,939
 asp_protease,78,493

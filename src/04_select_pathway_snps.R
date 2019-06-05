@@ -64,13 +64,20 @@ snps <- read.table("data/processed/snp_gene_ids_tair10.txt", header = TRUE) %>%
   mutate(position = as.integer(position)) %>%
   arrange(chromosome, position)
 
-# pull out annotation categories based on Mapman categories
-pathway <- extract_genes(gene_cats, c(args[2]), "BINCODE", snps, args[1])
-
-# export snplists for LDAK
+# create directories for pathways
 dir <- paste0("data/processed/pathways/", args[1])
 dir.create(dir, recursive = TRUE, showWarnings = FALSE)
 
+# pull out annotation categories based on Mapman categories
+pathway <- if(args[2] == 0) {
+  read.table(paste0(dir, "/", args[1], ".txt"), header = TRUE)
+} else {
+  extract_genes(gene_cats, c(args[2]), "BINCODE", snps, args[1])
+}
+
+head(pathway)
+
+# export snplists for LDAK
 pathway %>%
   select(snp_id) %>%
   write.table(., paste0(dir, "/list1"), quote = FALSE, row.names = FALSE, col.names = FALSE)

@@ -30,6 +30,7 @@ import numpy as np
 # to check:
 # foo <- tibble(file = files) %>% separate(file, sep = "/", into = c("dir", "pathway", "filename"), remove = FALSE) %>% filter(!pathway %in% "old") %>% mutate(data = lapply(file, read.table, header = TRUE, colClasses = "character"))
 # bar <- foo%>% group_by(pathway) %>% distinct(BINCODE, NAME)
+# to use prespecified files with pathway info, set bincode == 0 
 PATHWAYS = {
     "protein_aa_activation": "29.1",
     "protein_synthesis": "29.2",
@@ -59,7 +60,9 @@ PATHWAYS = {
     "aa_degradation": "13.2",
     "glycolysis_cystolic": "4.1",
     "glycolysis_plastid": "4.2",
-    "glycolysis_other": "4.3"
+    "glycolysis_other": "4.3",
+    "aa_deg_bcat": "0",
+    "aa_syn_nobcat": "0"
 }
 
 print(PATHWAYS)
