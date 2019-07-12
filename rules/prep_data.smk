@@ -77,7 +77,9 @@ rule pca:
     output:
         pca = "data/processed/pca.vect",
         pc1 = "data/processed/pca.1",
-        pc2 = "data/processed/pca.2"
+        pc2 = "data/processed/pca.2",
+        pc3 = "data/processed/pca.3",
+        pc50 = "data/processed/pca.50"
     params:
         bfile = config["bfile"],
         pruned = "data/processed/prune",
@@ -102,3 +104,5 @@ rule pca:
         --bfile {params.bfile}")
         shell("""awk "{{print \$1, \$2, \$3}}" {output.pca} > {output.pc1}""")
         shell("""awk "{{print \$1, \$2, \$3, \$4}}" {output.pca} > {output.pc2}""")
+        shell("""awk "{{print \$1, \$2, \$3, \$4, \$5}}" {output.pca} > {output.pc3}""")
+        shell("""awk '{{for(i=52; i<=NF; ++i) print \$i}}' > {output.pc50}""")

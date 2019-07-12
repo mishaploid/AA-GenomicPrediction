@@ -7,10 +7,10 @@ rule multiblup_pathways:
     output:
         "data/processed/pathways/{pathway}/list1"
     params:
-        "{pathway}",
-        bincode
+        pathway = "{pathway}",
+        bincode = bincode
     run:
-        shell("Rscript src/04_select_pathway_snps.R {params}")
+        shell("Rscript src/04_select_pathway_snps.R {params.pathway} \"{params.bincode}\"")
 
 # calculate kinships (power = 0, ignore weights YES)
 

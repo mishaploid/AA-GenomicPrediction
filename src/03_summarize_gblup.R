@@ -14,7 +14,10 @@ gblup_h2 <- tibble(file = list.files(path = "models/gblup_h2",
   mutate(data = lapply(file, read.table, header = TRUE, skip = 13)) %>%
   unnest(data) %>%
   filter(Component %in% "Her_ALL") %>%
-  select(trait, Heritability, Her_SD)
+  select(trait, Heritability, Her_SD) %>%
+  # correct trait names
+  mutate(trait = gsub("Corr", "", trait),
+         trait = gsub("_asp", "", trait))
 
 head(gblup_h2)
 
@@ -27,7 +30,11 @@ gblup_llik <- tibble(file = list.files(path = "models/gblup_h2",
   unnest(data) %>%
   filter(Num_Kinships %in% "Alt_Likelihood") %>%
   mutate(gblup_llik = as.numeric(X1)) %>%
-  select(trait, gblup_llik)
+  select(trait, gblup_llik) %>%
+  # correct trait names
+  mutate(trait = gsub("Corr", "", trait),
+         trait = gsub("_asp", "", trait))
+
 
 head(gblup_llik)
 
@@ -39,7 +46,10 @@ training_coef <- tibble(file = list.files(path = "models/gblup",
   separate(file, sep = "/|[.]", into = c("source", "method", "trait", "cvnum", "fold", "fill"), remove = FALSE) %>%
   mutate(data = lapply(file, read.table, header = TRUE)) %>%
   unnest(data) %>%
-  select(trait, cvnum, fold, Effect)
+  select(trait, cvnum, fold, Effect) %>%
+  # correct trait names
+  mutate(trait = gsub("Corr", "", trait),
+         trait = gsub("_asp", "", trait))
 
 head(training_coef)
 
@@ -49,7 +59,11 @@ gblup_pa <- tibble(file = list.files(path = "models/gblup",
   separate(file, sep = "/|[.]", into = c("source", "method", "trait", "cvnum", "fold", "fill"), remove = FALSE) %>%
   mutate(data = lapply(file, read.table, header = TRUE)) %>%
   unnest(data) %>%
+  # correct trait names
+  mutate(trait = gsub("Corr", "", trait),
+         trait = gsub("_asp", "", trait)) %>%
   left_join(., training_coef, by = c("trait", "cvnum", "fold"))
+
   # nest(-trait, -cvnum, -fold) %>%
   # mutate(fit = map(data, ~ lm(Profile1 ~ Phenotype, data = .)), results = map(fit, augment)) %>%
   # unnest(results) %>%

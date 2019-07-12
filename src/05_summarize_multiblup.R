@@ -16,7 +16,10 @@ multiblup_h2 <- tibble(file = list.files(path = "models/multiblup_h2",
   unnest(data) %>%
   # filter(Component %in% c("Her_K1", "Her_K2")) %>%
   # select(trait, pathway, Component, Heritability, Her_SD)
-  select(trait, pathway, Component, Share, SD)
+  select(trait, pathway, Component, Share, SD) %>%
+  # correct trait names
+  mutate(trait = gsub("Corr", "", trait),
+         trait = gsub("_asp", "", trait))
 
 head(multiblup_h2)
 
@@ -29,7 +32,10 @@ multiblup_llik <- tibble(file = list.files(path = "models/multiblup_h2",
   unnest(data) %>%
   filter(Num_Kinships %in% "Alt_Likelihood") %>%
   mutate(multiblup_llik = as.numeric(X2)) %>%
-  select(trait, pathway, multiblup_llik)
+  select(trait, pathway, multiblup_llik) %>%
+  # correct trait names
+  mutate(trait = gsub("Corr", "", trait),
+         trait = gsub("_asp", "", trait))
 
 head(multiblup_llik)
 
@@ -40,7 +46,10 @@ training_coef <- tibble(file = list.files(path = "models/gblup",
   separate(file, sep = "/|[.]", into = c("source", "method", "trait", "cvnum", "fold", "fill"), remove = FALSE) %>%
   mutate(data = lapply(file, read.table, header = TRUE)) %>%
   unnest(data) %>%
-  select(trait, cvnum, fold, Effect)
+  select(trait, cvnum, fold, Effect) %>%
+  # correct trait names
+  mutate(trait = gsub("Corr", "", trait),
+         trait = gsub("_asp", "", trait))
 
 head(training_coef)
 
@@ -50,7 +59,11 @@ multiblup_pa <- tibble(file = list.files(path = "models/multiblup",
   separate(file, sep = "/|[.]", into = c("source", "method", "pathway", "trait", "cvnum", "fold"), remove = FALSE) %>%
   mutate(data = lapply(file, read.table, header = TRUE)) %>%
   unnest(data) %>%
-  left_join(., training_coef, by = c("trait", "cvnum", "fold"))
+  # correct trait names
+  mutate(trait = gsub("Corr", "", trait),
+         trait = gsub("_asp", "", trait)) %>%
+  left_join(., training_coef, by = c("trait", "cvnum", "fold")) 
+
   # nest(-trait, -pathway, -cvnum, -fold) %>%
   # mutate(fit = map(data, ~ lm(Profile1 ~ Phenotype, data = .)), results = map(fit, augment)) %>%
   # unnest(results) %>%

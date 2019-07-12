@@ -30,13 +30,14 @@ import numpy as np
 # to check:
 # foo <- tibble(file = files) %>% separate(file, sep = "/", into = c("dir", "pathway", "filename"), remove = FALSE) %>% filter(!pathway %in% "old") %>% mutate(data = lapply(file, read.table, header = TRUE, colClasses = "character"))
 # bar <- foo%>% group_by(pathway) %>% distinct(BINCODE, NAME)
-# to use prespecified files with pathway info, set bincode == 0 
+# to use prespecified files with pathway info, set bincode == 0
+
 PATHWAYS = {
     "protein_aa_activation": "29.1",
     "protein_synthesis": "29.2",
     "protein_targeting": "29.3",
     "protein_postrans": "29.4",
-#    "protein_degradation": "29.5",
+    "protein_degradation": "(?!29.5.11)29.5",
     "degradation_subtilases": "29.5.1$",
     "degradation_autophagy": "29.5.2$",
     "cys_protease": "29.5.3$",
@@ -44,7 +45,7 @@ PATHWAYS = {
     "ser_protease": "29.5.5$",
     "metallo_protease": "29.5.7$",
     "degradation_AAA": "29.5.9$",
-    "degradation_ubiquitin": "29.5.11$",
+    "degradation_ubiquitin": "29.5.11",
     "protein_folding": "29.6",
     "protein_glyco": "29.7",
     "protein_assembly": "29.8",
@@ -58,14 +59,15 @@ PATHWAYS = {
     "flavonoids": "16.8",
     "aa_synthesis": "13.1",
     "aa_degradation": "13.2",
+    "glycolysis": "4",
     "glycolysis_cystolic": "4.1",
     "glycolysis_plastid": "4.2",
     "glycolysis_other": "4.3",
     "aa_deg_bcat": "0",
-    "aa_syn_nobcat": "0"
+    "aa_syn_nobcat": "0",
+    "aa_syn_nobcat_haplo": "0",
+    "aa_deg_bcat_haplo": "0"
 }
-
-print(PATHWAYS)
 
 def bincode(wildcards):
 	bincode = PATHWAYS[wildcards.pathway]
@@ -138,7 +140,8 @@ rule all:
         expand("models/multiblup/{pathway}/{trait}.cv5.10.profile", \
         pathway = PATHWAYS, trait = TRAIT),
         # multiblup_results
-        "reports/multiblup.RData"
+        "reports/multiblup.RData",
+        expand("models/gblup_pc50/{trait}.gblup.reml", trait = TRAIT)
         # # null_sampling
         # "data/interim/null_group_sizes.txt",
         # expand("data/processed/random_sets/null_{null}.txt", null = NULL),

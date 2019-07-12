@@ -29,13 +29,27 @@ rule gblup_kins:
 rule gblup_h2:
     input:
         pheno = config["pheno_file"],
-        kins = "models/gblup/kinships.grm.id",
-        pc1 = "data/processed/pca.1",
-        pc2 = "data/processed/pca.2"
+        kins = "models/gblup/kinships.grm.id"
     output:
         "models/gblup_h2/{trait}.gblup.reml"
     params:
         out = "models/gblup_h2/{trait}.gblup",
+        trait = "{trait}",
+        grm = "models/gblup/kinships"
+    run:
+        shell("{ldak} --reml {params.out} \
+        --pheno {input.pheno} \
+        --pheno-name {params.trait} \
+        --grm {params.grm}")
+
+rule gblup_h2_pcs:
+    input:
+        pheno = "data/processed/pheno_file_pcs",
+        kins = "models/gblup/kinships.grm.id"
+    output:
+        "models/gblup_pc50/{trait}.gblup.reml"
+    params:
+        out = "models/gblup_pc50/{trait}.gblup",
         trait = "{trait}",
         grm = "models/gblup/kinships"
     run:

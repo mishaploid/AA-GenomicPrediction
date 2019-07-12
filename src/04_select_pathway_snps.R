@@ -22,7 +22,7 @@ gene_list <- read.table("data/processed/gene_list_tair10.txt", header = TRUE)
 ################################################################################
 
 extract_genes <- function(genes, category, go_term, snp_data, filename) {
-  tmp <- genes[grep(paste0('^', category), genes[,go_term]),] %>%
+  tmp <- genes[grep(paste0('^', category), genes[,go_term], perl = TRUE),] %>%
     distinct(ensembl_gene_id, .keep_all = TRUE) %>%
     mutate_at(c("chromosome_name", "ensembl_gene_id"), funs(factor(.))) %>%
     mutate(mn = start_position - 2500,
@@ -76,6 +76,9 @@ pathway <- if(args[2] == 0) {
 }
 
 head(pathway)
+
+unique(pathway$BINCODE)
+unique(pathway$NAME)
 
 # export snplists for LDAK
 pathway %>%

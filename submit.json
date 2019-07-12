@@ -1,7 +1,8 @@
 {
     "__default__" :
     {
-        "partition" : "main"
+        "partition" : "main",
+        "name" : "{rule}.{wildcards}"
     },
     "snp_weightings" :
     {
@@ -111,5 +112,11 @@
       "cpus-per-task" : 1,
       "p" : "main",
       "o" : "slurm_out/null_h2/{wildcards}.%j.out"
+    },
+    "gblup_h2_pcs" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/pcs_gblup_{wildcards}.%j.out"
     }
 }

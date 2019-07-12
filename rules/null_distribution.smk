@@ -102,3 +102,11 @@ rule null_h2:
         #         --mpheno {params.trait} \
         #         --mgrm {input.mgrm} \
         #         --dentist YES")
+
+rule null_results:
+    input:
+        expand("models/null_h2/c_{random}/{trait}.h2.reml", random = RANDOM, trait = TRAIT)
+    output:
+        "reports/lr_null_results.csv"
+    run:
+        shell("Rscript src/08_summarize_null.R")
