@@ -95,7 +95,7 @@ rule pca:
         --bfile {params.bfile} \
         --extract {params.pruned}.prune.in \
         --ignore-weights YES \
-        --power -0.25")
+        --power 0")
         shell("{ldak} --pca {params.outdir} \
         --grm {params.outdir}")
         shell("{ldak} --calc-pca-loads {params.outdir} \

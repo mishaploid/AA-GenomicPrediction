@@ -63,7 +63,7 @@ rule calc_kins_null:
 
 rule null_h2:
     input:
-        pheno = "data/processed/pheno_file",
+        pheno = config["pheno_file"],
         mgrm = expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
     output:
         out = expand("models/null_h2/c_{random}/{{trait}}.h2.reml", random = RANDOM),
