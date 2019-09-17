@@ -75,11 +75,7 @@ rule pca:
         bim = config["bfile"] + ".bim",
         fam = config["bfile"] + ".fam"
     output:
-        pca = "data/processed/pca.vect",
-        pc1 = "data/processed/pca.1",
-        pc2 = "data/processed/pca.2",
-        pc3 = "data/processed/pca.3",
-        pc50 = "data/processed/pca.50"
+        "data/processed/pca.bed"
     params:
         bfile = config["bfile"],
         pruned = "data/processed/prune",
@@ -91,18 +87,19 @@ rule pca:
         --make-founders require-2-missing \
         --indep-pairwise 200 10 .05 \
         --out {params.pruned}")
-        shell("{ldak} --calc-kins-direct {params.outdir} \
-        --bfile {params.bfile} \
+        shell("plink --bfile {params.bfile} \
         --extract {params.pruned}.prune.in \
-        --ignore-weights YES \
-        --power 0")
-        shell("{ldak} --pca {params.outdir} \
-        --grm {params.outdir}")
-        shell("{ldak} --calc-pca-loads {params.outdir} \
-        --pcastem {params.outdir} \
-        --grm {params.outdir} \
-        --bfile {params.bfile}")
-        shell("""awk "{{print \$1, \$2, \$3}}" {output.pca} > {output.pc1}""")
-        shell("""awk "{{print \$1, \$2, \$3, \$4}}" {output.pca} > {output.pc2}""")
-        shell("""awk "{{print \$1, \$2, \$3, \$4, \$5}}" {output.pca} > {output.pc3}""")
-        shell("""awk '{{for(i=52; i<=NF; ++i) print \$i}}' > {output.pc50}""")
+        --out {params.outdir} \
+        --make-bed")
+        # shell("{ldak} --calc-kins-direct {params.outdir} \
+        # --bfile {params.bfile} \
+        # --extract {params.pruned}.prune.in \
+        # --ignore-weights YES \
+        # --power 0")
+        # shell("{ldak} --pca {params.outdir} \
+        # --grm {params.outdir}")
+        # shell("{ldak} --calc-pca-loads {params.outdir} \
+        # --pcastem {params.outdir} \
+        # --grm {params.outdir} \
+        # --bfile {params.bfile}")
+        # shell("""awk '{{for(i=52; i<=NF; ++i) print \$i}}' > {output.pc50}""")

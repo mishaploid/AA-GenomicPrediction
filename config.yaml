@@ -2,4 +2,4 @@
 bfile: data/processed/atregmap_clean
 
 # phenotype data
-pheno_file: data/processed/pheno_file
+pheno_file: data/processed/pheno_file_pcs
