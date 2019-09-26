@@ -8,7 +8,7 @@ rule null_sampling:
     output:
         "data/interim/null_group_sizes.txt"
     shell:
-        "Rscript src/06_null_group_sizes.R"
+        "Rscript src/07_null_group_sizes.R"
 
 # sample gene groups
 # calls a custom R script with a function to sample all SNPs in a gene
@@ -22,7 +22,7 @@ rule null_gene_groups:
     params:
         num = "{null}"
     shell:
-        "Rscript src/07_generate_null_gene_groups.R {params.num}"
+        "Rscript src/08_generate_null_gene_groups.R {params.num}"
 
 ### calculate kinships for control sets
 ### Only interested in partitioning variance
@@ -76,37 +76,13 @@ rule null_h2:
             shell("{ldak} --reml {params.prefix}{r}/{params.trait}.h2 \
             --pheno {input.pheno} \
             --pheno-name {params.trait} \
-            --mgrm {params.mgrm}{r}/partition.list")
-
-        # if {wildcards.trait} == 13:
-        #     print("Including PC1 for {trait}")
-        #     shell("{ldak} --reml {params.prefix} \
-        #     --pheno {input.pheno} \
-        #     --mpheno {params.trait} \
-        #     --mgrm {input.mgrm} \
-        #     --dentist YES \
-        #     --covar {params.pc1}")
-        # else:
-        #     if {wildcards.trait} == (5, 6, 18, 26, 43, 54):
-        #         print("Including PC1 and PC2 for {trait}")
-        #         shell("{ldak} --reml {params.prefix} \
-        #         --pheno {input.pheno} \
-        #         --mpheno {params.trait} \
-        #         --mgrm {input.mgrm} \
-        #         --dentist YES \
-        #         --covar {params.pc2}")
-        #     else:
-        #         print("Including no PCs for {trait}")
-        #         shell("{ldak} --reml {params.prefix} \
-        #         --pheno {input.pheno} \
-        #         --mpheno {params.trait} \
-        #         --mgrm {input.mgrm} \
-        #         --dentist YES")
+            --mgrm {params.mgrm}{r}/partition.list \
+            --constrain NO")
 
 rule null_results:
     input:
-        expand("models/null_h2/c_{random}/{trait}.h2.reml", random = RANDOM, trait = TRAIT)
+        expand("models/null_h2/c_{random}/{trait}.h2.reml", random = 5000, trait = TRAIT)
     output:
         "reports/lr_null_results.csv"
     run:
-        shell("Rscript src/08_summarize_null.R")
+        shell("Rscript src/09_summarize_null.R")

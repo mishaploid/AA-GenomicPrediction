@@ -2,7 +2,6 @@ pathway,n_genes,size
 aa_deg_bcat,158,1070
 aa_deg_bcat_haplo,160,1094
 aa_degradation,156,1055
-aa_syn_nobcat,379,2108
 aa_syn_nobcat_haplo,376,2084
 aa_synthesis,380,2123
 aa_transport,144,939
@@ -25,7 +24,6 @@ phenylpropanoids,161,845
 protein_aa_activation,203,1231
 protein_assembly,44,312
 protein_degradation,996,6405
-protein_degradation_old,3616,22072
 protein_folding,138,814
 protein_glyco,87,459
 protein_postrans,1407,8794

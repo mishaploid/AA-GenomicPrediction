@@ -65,41 +65,34 @@ rule snp_weightings:
 ################################################################################
 # Step 2: run principal component analysis (PCA)
 # use as covariates in reml model to account for population structure
-# NOTE:
-# before running script: awk < {input.bim} '{print $2}' > data/processed/all.snps
-# after completion: awk '{print $1, $2, $3}' ../data/processed/pca.vect > ../data/processed/pca.1
 
-rule pca:
+rule pca_input:
     input:
         bed = config["bfile"] + ".bed",
         bim = config["bfile"] + ".bim",
         fam = config["bfile"] + ".fam"
     output:
-        "data/processed/pca.bed"
+        "models/pca/ld_pruned.bed"
     params:
         bfile = config["bfile"],
-        pruned = "data/processed/prune",
-        outdir = "data/processed/pca"
+        pruned = "models/pca/prune",
+        outdir = "models/pca/ld_pruned"
     run:
         shell("""awk < {input.bim} "{{print \$2}}" > data/processed/all.snps""")
         shell("plink --bfile {params.bfile} \
         --extract data/processed/all.snps \
         --make-founders require-2-missing \
-        --indep-pairwise 200 10 .05 \
+        --indep-pairwise 10 5 .1 \
         --out {params.pruned}")
         shell("plink --bfile {params.bfile} \
         --extract {params.pruned}.prune.in \
         --out {params.outdir} \
         --make-bed")
-        # shell("{ldak} --calc-kins-direct {params.outdir} \
-        # --bfile {params.bfile} \
-        # --extract {params.pruned}.prune.in \
-        # --ignore-weights YES \
-        # --power 0")
-        # shell("{ldak} --pca {params.outdir} \
-        # --grm {params.outdir}")
-        # shell("{ldak} --calc-pca-loads {params.outdir} \
-        # --pcastem {params.outdir} \
-        # --grm {params.outdir} \
-        # --bfile {params.bfile}")
-        # shell("""awk '{{for(i=52; i<=NF; ++i) print \$i}}' > {output.pc50}""")
+
+rule pca_result:
+    input:
+        "models/pca/ld_pruned.bed"
+    output:
+        config["pheno_file"]
+    run:
+        shell("Rscript src/02_population_structure.R")

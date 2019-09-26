@@ -2,72 +2,23 @@
     "__default__" :
     {
         "partition" : "main",
-        "name" : "{rule}.{wildcards}"
-    },
-    "snp_weightings" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/snp_weightings/{wildcards}.%j.out"
-    },
-    "pca" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/pca_{wildcards}.%j.out"
-    },
-    "get_cv" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/get_cv/{wildcards}.%j.out"
-    },
-    "gblup_kins" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/gblup/{wildcards}_kins.%j.out"
-    },
-    "gblup_h2" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/gblup/{wildcards}_h2.%j.out"
-    },
-    "gblup_reml" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/gblup/{wildcards}_reml.%j.out"
-    },
-    "gblup_blup" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/gblup/{wildcards}_blup.%j.out"
-    },
-    "gblup_results" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/gblup_summary.%j.out"
+        "name" : "{rule}.{wildcards}",
+        "o" : "slurm_out/{rule}.{wildcards}.%j.out",
+        "cpus-per-task" : 1
     },
     "multiblup_pathways" :
     {
       "cpus-per-task" : 4,
-      "p" : "main",
       "o" : "slurm_out/{wildcards}.%j.out"
     },
     "multiblup_kins" :
     {
       "cpus-per-task" : 1,
-      "p" : "main",
       "o" : "slurm_out/multiblup_kins/{wildcards}.%j.out"
     },
     "multiblup_h2" :
     {
       "cpus-per-task" : 1,
-      "p" : "main",
       "p" : "main",
       "o" : "slurm_out/multiblup_h2/{wildcards}.%j.out"
     },
@@ -87,13 +38,7 @@
     {
       "cpus-per-task" : 1,
       "p" : "main",
-      "o" : "slurm_out/multiblup_report.%j.out"
-    },
-    "null_sampling" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/null_sampling.%j.out"
+      "o" : "slurm_out/multiblup_results.%j.out"
     },
     "null_gene_groups" :
     {
@@ -101,22 +46,16 @@
       "p" : "main",
       "o" : "slurm_out/null_gene_groups/{wildcards}.%j.out"
     },
-    "calc_kins_null" :
-    {
-      "cpus-per-task" : 1,
-      "p" : "main",
-      "o" : "slurm_out/null_kinships_{wildcards}.%j.out"
-    },
     "null_h2" :
     {
       "cpus-per-task" : 1,
       "p" : "main",
       "o" : "slurm_out/null_h2/{wildcards}.%j.out"
     },
-    "gblup_h2_pcs" :
+    "null_results" :
     {
-      "cpus-per-task" : 1,
+      "cpus-per-task" : 20,
       "p" : "main",
-      "o" : "slurm_out/pcs_gblup_{wildcards}.%j.out"
+      "o" : "slurm_out/null_results.%j.out"
     }
 }
