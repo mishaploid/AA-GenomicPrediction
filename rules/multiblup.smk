@@ -48,7 +48,7 @@ rule multiblup_kins:
 
 ### MultiBLUP - REML model to estimate genetic variances (heritability)
 ### When there are multiple wildcards in output name, need to escape other
-###   wildcards (i.e. not the trait id) with {{}}
+### wildcards (i.e. not the trait id) with {{}}
 ### --dentist YES will pad missing phenotype values
 
 rule multiblup_h2:

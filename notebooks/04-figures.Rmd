@@ -1,0 +1,331 @@
+---
+title: "AA-GP: Figures"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Setup
+
+```{r setup}
+knitr::opts_knit$set(root.dir = "~/Documents/AA-GenomicPrediction")
+
+library(tidyverse)
+library(broom)
+
+# set colorblind friendly palette
+cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+```
+
+```{r load results}
+load("reports/gblup.RData")
+load("reports/model_summary.RData")
+```
+
+## Figure 1 - GBLUP
+
+```{r fig 1}
+gblup_summary %>%
+  mutate(aa_cat = fct_relevel(aa_cat, "absolute", "relative", "family"),
+         family = fct_relevel(family, "aromatic", after = 4)) %>%
+  group_by(trait) %>%
+  filter(mean(gblup_pa) > 0.3) %>%
+  ungroup() %>%
+  ggplot(., aes(reorder(trait, as.numeric(as.factor(aa_cat))), gblup_pa, fill = aa_cat, col = aa_cat)) +
+  scale_fill_manual(name = "", values = c("#66a61e", "#d95f02", "#7570b3")) + 
+  scale_colour_manual(name = "", values = c("#66a61e", "#d95f02", "#7570b3")) + 
+  geom_point(position = position_jitterdodge(dodge.width = 1), size = 0.75) + 
+  geom_boxplot(col = "grey25", position = position_dodge(width = 0.9), 
+               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
+  geom_point(aes(trait, gblup_h2), colour = "black", shape = 2, size = 1.25,
+             show.legend = FALSE) + 
+  facet_grid(.~ family, scales = "free_x", space = "free") + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        text = element_text(size = 10)) +
+  xlab("") +
+  ylab("Prediction accuracy (r)")
+
+
+ggsave("reports/figures/Fig1.tiff", height = 3, width = 7.5)
+
+```
+
+## Figure 3 - MultiBLUP results
+
+```{r multiblup results}
+fam <- data.frame(trait = gblup_summary$trait, family = gblup_summary$family,
+                  aa_cat = gblup_summary$aa_cat)
+
+multiblup_pass <- read_csv("reports/multiblup_pass.csv") %>%
+  complete(pathway, nesting(trait)) %>%
+  left_join(., fam) %>%
+  mutate(family = factor(family, 
+                         levels = c("aspartate", "glutamate", "BCAA_pyruvate", 
+                                    "serine", "aromatic", "total")),
+         trait = fct_reorder(trait, as.numeric(family)),
+         aa_cat = fct_relevel(aa_cat, 
+                              "relative", 
+                              after = 1),
+         aa_cat = fct_recode(aa_cat, 
+                             abs = "absolute", 
+                             rel = "relative", 
+                             fam = "family"),
+         family = fct_recode(family, 
+                             "pyruvate (BCAA)" = "BCAA_pyruvate"),
+         category = ifelse(
+      grepl("degradation_|protein_|protease", pathway),
+      "protein",
+      ifelse(
+        grepl(
+          "flavonoids|isoprenoids|N_containing|phenylpropanoids|S_containing",
+          pathway
+        ),
+        "specialized",
+        ifelse(
+          grepl("aa_degradation|aa_synthesis|aa_transport", pathway),
+          "amino\nacid",
+          "primary"
+        )
+      )
+    ) ,
+    category = factor(
+      category,
+      levels = c("amino\nacid", "primary", "specialized", "protein")
+    )) %>% 
+  dplyr::select(trait, pathway, multiblup_h2, family, aa_cat, category) %>%
+  distinct() 
+```
+
+```{r fig 2}
+multiblup_pass %>%
+    ggplot(aes(trait, fct_rev(pathway), 
+               size = multiblup_h2, 
+               colour = family)) +
+    geom_point() +
+    scale_colour_manual(name = "Family", 
+                        values = cbPalette[c(5, 6, 7, 1, 3, 2)], 
+                        drop = FALSE) +
+    scale_size_continuous(range = c(0, 4),
+                          limits = c(0, 1),
+                          breaks = c(0.25, 0.5, 0.75, 1),
+                          name = "Proportion of heritability explained") +
+    facet_grid(category ~ family + aa_cat,
+               scales = "free",
+               space = "free",
+               switch = "y") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          panel.spacing.y = unit(0.1, "lines"),
+          panel.spacing.x = unit(0.1, "lines"),
+          panel.grid.major = element_line(colour = 'lightgray', size = 0.25),
+          text = element_text(size = 10),
+          axis.text = element_text(size = 8),
+          strip.text = element_text(size = 8, margin = margin()),
+          strip.text.y = element_text(angle = 180),
+          legend.position = "top") +
+    labs(y = "Pathway", x = "Trait") +
+    guides(colour = FALSE, 
+           size = guide_legend(ncol = 4, byrow = TRUE)) +
+    scale_y_discrete(position = "right") 
+
+ggsave("reports/figures/Fig2.eps", height = 4, width = 7.5, device = "eps")
+
+```
+
+## Figure 4 - GBLUP vs MultiBLUP
+
+```{r fig 4}
+load("reports/model_summary.RData")
+
+aa_cat <- gblup_summary[,c(1,10)] %>% 
+  distinct()
+
+plotdf <- compare %>%
+  left_join(., aa_cat) %>% 
+  inner_join(multiblup_pass, by = c("trait", "pathway")) %>%
+  dplyr::select(-multiblup_h2) %>% # -lr_pass, -h2_pass, -pa_pass) %>%
+  group_by(trait, pathway, cvnum, fold, category) %>%
+  summarize_if(is.numeric, mean) %>%
+  ungroup() %>%
+  group_by(trait, category) %>%
+  filter(mean(pa_diff) >= 0.01) %>%
+  ungroup() %>%
+  gather(key = statistic, value = value, -trait, -pathway, -cvnum, -fold, -category) %>%
+  left_join(., aa_cat, by = "trait") %>%
+  filter(statistic %in% c("pa_diff")) %>%
+  mutate(aa_cat = fct_relevel(aa_cat, "relative", after = 1)) %>%
+  mutate_if(is.character, as.factor)
+
+# library(cowplot)
+
+plotdf %>%
+  # filter(category == "amino\nacid") %>%
+  mutate(category = fct_relevel(category, "specialized", after = 2)) %>%
+  ggplot(., aes(reorder(trait, as.numeric(aa_cat)), value, fill = aa_cat, col = aa_cat)) +
+  scale_fill_manual(values = c("#66a61e", "#d95f02", "#7570b3")) + 
+  scale_colour_manual(values = c("#66a61e", "#d95f02", "#7570b3")) + 
+  geom_abline(intercept = 0, slope = 0, col = "darkgray") + 
+  geom_point(position = position_jitterdodge(dodge.width = 1), size = 0.75) + 
+  geom_boxplot(col = "grey25", position = position_dodge(width = 0.9), 
+               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
+  facet_grid(aa_cat ~ category + pathway, scales = "free_x", space = "free") +
+  # facet_wrap(~pathway + category, scales = "free_x") +
+  ylim(-0.5, 0.5) +
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text.x = element_text(angle = 90)) + 
+  xlab("") +
+  ylab(expression(Delta*italic(r))) 
+
+ggsave("reports/figures/Fig4.pdf", height = 8, width = 12, device = "pdf")
+
+
+```
+  
+```{r scratch}
+multiblup_table <- 
+  left_join(gblup_summary, multiblup_summary, by = c("trait", "cvnum", "fold")) %>%
+  group_by(trait, pathway, cvnum, fold) %>% 
+  # filter(multiblup_h2 > 0) %>% 
+  mutate(pa_diff = multiblup_pa - gblup_pa,
+         reliability_diff = multiblup_reliability - gblup_reliability,
+         bias_diff = multiblup_bias - gblup_bias,
+         mse_diff = multiblup_mse - gblup_mse) %>%
+  group_by(trait, pathway) %>% 
+  # filter(mean(pa_diff) >= 0.05) %>%
+  # select(trait, pathway, gblup_pa, multiblup_pa, 
+  #        gblup_reliability, multiblup_reliability,
+  #        gblup_bias, multiblup_bias, 
+  #        gblup_mse, multiblup_mse, pa_diff, reliability_diff) %>%
+  # summarize_if(is.numeric, mean) %>%
+  ungroup() 
+  # write_csv("reports/multiblup_table.csv")
+
+fam <- select(gblup_summary, trait, family) %>% 
+  distinct()
+
+multiblup_table %>%
+  ungroup() %>% 
+  select(-pa_diff, -reliability_diff) %>% 
+  # select(trait, pathway, pa_diff) %>%
+  filter(!pathway %in% c("glycolysis_cystolic", "glycolysis_other", 
+                       "AAA-type", "autophagy", "degradation_subtilases", "cys_protease",
+                       "metallo_protease", "ser_protease")) %>%
+  left_join(., fam) %>% 
+  # filter(!pathway %in% c("aa_degradation", "aa_synthesis")) %>%
+  # mutate(pathway = fct_recode(pathway,
+  #                           "aa_synthesis" = "aa_syn_nobcat",
+  #                           "aa_degradation" = "aa_deg_bcat"),
+         # pathway = fct_relevel(pathway, "aa_synthesis", 
+         #                       "aa_degradation",
+         #                       "aa_transport",
+         #                       "isoprenoids",
+         #                       "phenylpropanoids",
+         #                       "S_containing")) %>%
+  gather(key = "metric", value = "value", -trait, -pathway, -family) %>%
+  separate(metric, pattern = "_", into = c("method", "metric")) %>% 
+  filter(metric %in% c("pa")) %>% 
+  # mutate(metric = fct_relevel(metric, 
+  #                             "pa", "reliability", "bias", "mse")) %>% 
+  ggplot(., aes(trait, value, fill = method, col = method)) +
+  scale_fill_manual(values = c("#d8b365", "#5ab4ac")) + 
+  scale_colour_manual(values = c("#d8b365", "#5ab4ac")) + 
+  geom_abline(intercept = 0, slope = 0, col = "darkgray") + 
+  geom_point(position = position_jitterdodge(dodge.width = .8, 
+                                             jitter.width = 0.2), size = 0.5) + 
+  geom_boxplot(col = "grey25", position = position_dodge(width = 0.8), 
+               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
+  facet_grid(.~pathway, scale = "free", space = "free_x") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        strip.text.x = element_text(angle = 90))
+
+ggsave("reports/figures/Fig4.png", height = 4, width = 8)
+  
+multiblup_table %>% 
+  ungroup() %>% 
+  select(-pa_diff) %>% 
+  left_join(., fam) %>% 
+  filter(!pathway %in% c("aa_degradation", "aa_synthesis")) %>%
+  mutate(pathway = fct_recode(pathway,
+                            "aa_synthesis" = "aa_syn_nobcat",
+                            "aa_degradation" = "aa_deg_bcat")) %>%
+  gather(key = "metric", value = "value", -trait, -pathway, -family) %>%
+  separate(metric, pattern = "_", into = c("method", "metric")) %>% 
+  mutate(metric = fct_relevel(metric, 
+                              "pa", "reliability", "bias", "mse")) %>% 
+  ggplot(., aes(trait, value, fill = method)) +
+  geom_boxplot() +
+  facet_grid(metric~pathway, scale = "free", space = "free_x") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
+```
+
+```{r}
+
+foo <- multiblup_summary %>% 
+  left_join(gblup_summary) %>% 
+  filter(!pathway %in% c("glycolysis_cystolic", "glycolysis_other", 
+                     "AAA-type", "autophagy", "degradation_subtilases", "cys_protease",
+                     "metallo_protease", "ser_protease")) %>%
+  gather(key = method, value = value, gblup_pa, multiblup_pa,
+         gblup_reliability, multiblup_reliability, gblup_bias,
+         multiblup_bias, gblup_mse, multiblup_mse) %>%
+  group_by(trait, pathway) %>%
+ # # filter(n() == 100) %>% 
+  summarise_at("value", list(pa_gblup = ~mean(.[method == "gblup_pa"]),
+                         pa_multi = ~mean(.[method == "multiblup_pa"]),
+                         pa_dif = ~pa_multi - pa_gblup, 
+                         n = ~n(),
+                         pa_p_value = ~t.test(.[method == "multiblup_pa"], 
+                                              .[method == "gblup_pa"],
+                                          alternative = "greater", paired = TRUE)$p.value,
+                         r_gblup = ~mean(.[method == "gblup_reliability"]),
+                         r_multi = ~mean(.[method == "multiblup_reliability"]),
+                         r_dif = ~r_multi - r_gblup, 
+                         n = ~n(),
+                         r_p_value = ~t.test(.[method == "multiblup_reliability"], 
+                                              .[method == "gblup_reliability"],
+                                          alternative = "greater", paired = TRUE)$p.value,
+                         bias_gblup = ~mean(.[method == "gblup_bias"]),
+                         bias_multi = ~mean(.[method == "multiblup_bias"]),
+                         bias_dif = ~bias_multi - bias_gblup, 
+                         n = ~n(),
+                         bias_p_value = ~t.test(.[method == "multiblup_bias"], 
+                                              .[method == "gblup_bias"],
+                                              paired = TRUE)$p.value,
+                         mse_gblup = ~mean(.[method == "gblup_mse"]),
+                         mse_multi = ~mean(.[method == "multiblup_mse"]),
+                         mse_dif = ~mse_multi - mse_gblup, 
+                         n = ~n(),
+                         mse_p_value = ~t.test(.[method == "multiblup_mse"], 
+                                              .[method == "gblup_mse"],
+                                          alternative = "greater", paired = TRUE)$p.value))
+ 
+bar <- foo %>%
+  ungroup() %>%
+  filter(pa_dif > 0.01) %>%
+  select(-pa_dif, -r_dif, -mse_dif, -bias_dif) %>%
+  mutate_if(is.numeric, round, 4) %>% 
+  write_csv("reports/prediction_summary.csv")
+
+#  ungroup() %>%
+ #  group_by(trait) %>%
+ #  mutate(t_fdr = p.adjust(p_value, method = "fdr", n = 28),
+ #    wilcox_fdr = p.adjust(wilcox_p, method = "fdr", n = 28)) 
+```
+
+
+
+
+
+
+
+
+

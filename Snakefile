@@ -87,14 +87,14 @@ TRAIT = ['ala', 'arg', 'asp', 'gln' , 'glu', 'gly', 'his', 'ile', 'leu', 'lys','
 # list range of random subsets to include - we used 5000
 RANDOM = list(range(1,5001))
 
+# index for null distribution gene group sampling
+NULL = np.arange(1, 5001, 50).tolist()
+
 # how many sets of cross validation - we used 5
 CV = list(range(1,6))
 
 # fold for each cross validation - we used 10 fold (total of 50 cross validations)
 INDEX = list(range(1,11))
-
-# index for null distribution gene group sampling
-NULL = np.arange(1, 5001, 50).tolist()
 
 # path for ldak software
 ldak = "../software/ldak5.linux"

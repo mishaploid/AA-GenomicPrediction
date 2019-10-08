@@ -1,0 +1,291 @@
+---
+title: "Summarize GBLUP and MultiBLUP"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    code_folding: hide
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+This script reads in results from the LDAK software to summarize predictive ability 
+for the GBLUP and MultiBLUP models. The output is an RData file (reports/model_summary.RData) 
+containing a data frame summary for each model and a data frame comparing the two.
+
+# Setup
+Load required packages and set root directory
+
+```{r setup, results = "hide"}
+knitr::opts_knit$set(root.dir = "~/Documents/AA-GenomicPrediction", 
+                     warning = FALSE)
+
+knitr::opts_chunk$set(fig.width = 10)
+
+library(tidyverse)
+library(broom)
+```
+
+## Load data
+
+#### Read in results from `src/03_summarize_gblup.R` and `src/06_summarize_multiblup.R`
+- **gblup_h2** - heritability from GBLUP model  
+- **gblup_llik** - log likelihood for GBLUP model  
+- **gblup_pa** - cross-validation for GBLUP model  
+- **multiblup_h2** - heritability from MultiBLUP model  
+- **multiblup_llik** - log likelihood for MultiBLUP model  
+- **multiblup_pa** - cross-validation for MultiBLUP model  
+
+```{r load data}
+load("reports/gblup.RData")
+load("reports/multiblup.RData")
+```
+
+####  Define grouping categories by trait  
+- **aa_fam** - amino acid family (based on precursor)  
+- **aa_cat** - type of measurement (absolute, relative to total, or family ratio)
+
+```{r set amino acid family ids}
+# read in amino acid trait ids
+aa_fam <- unique((gblup_pa$trait)) %>%
+  tibble::enframe() %>%
+  mutate(
+         # add amino acid biochemical family ids (based on precursor)
+         family = ifelse(grepl("asp|thr|met|asp|AspFam", value) & !grepl("ile", value), 
+                         "aspartate", 
+                         ifelse(grepl("arg|glu|gln|pro|his|GluFam", value),
+                                "glutamate",
+                                ifelse(grepl("gly|ser|SerFam", value),
+                                       "serine",
+                                       ifelse(grepl("phe|tyr|trp|ShikFam", value),
+                                              "aromatic",
+                                              ifelse(grepl("Total", value),
+                                                     "total", "BCAA_pyruvate"))))),
+         # add type of measurement (absolute, relative, ratio)
+         aa_cat = ifelse(!grepl("_", value), "absolute",
+                         ifelse(grepl("_t", value), "relative",
+                                "family"))) %>%
+  rename(trait = "value")
+
+head(aa_fam)
+```
+
+# GBLUP 
+Based on five ten-fold cross validations with a one-fold hold out (50 total observations)
+
+**Variables in gblup_pa:**  
+
+- ID2 = Arabidopsis ecotype  
+- Phenotype = observed phenotype  
+- Profile1 = predicted phenotype (mean centered)   
+- Effect = intercept (mean) for training set  
+
+See LDAK documentation on profile scores - http://dougspeed.com/profile-scores/
+
+### Visual check of cross-validations
+
+Quality check to make sure cross-validation is working as expected 
+(e.g. each training/test set is different)  
+
+There should be a total of 50 cross-validations per trait (ten-fold cross-validation with a one-fold hold out)
+
+```{r visual check of cv}
+gblup_pa %>%
+  filter(trait %in% "ile_t") %>% 
+  mutate(predicted = Profile1 + Effect) %>%
+  ggplot(aes(x = predicted, y = Phenotype)) +
+  geom_abline(intercept = 0, slope = 1) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_grid(cvnum ~ fold) +
+  theme_bw() 
+```
+
+**Metrics:**
+
+- prediction accuracy = $r_{\widehat{g},g}$  
+- reliability = $r^2_{\widehat{g},g}/h^2$  
+- bias = $b(\widehat{g},g)$  
+- MSE = $\frac{1}{n}\sum{(g - \widehat{g})^2}$  
+
+```{r gblup prediction accuracy}
+gblup_summary <- gblup_pa %>% 
+  left_join(., gblup_h2) %>%
+  # group by trait, cross-validation, and fold
+  group_by(trait, cvnum, fold) %>% 
+  # add mean value for training set to predicted values 
+  mutate(predicted = Profile1 + Effect) %>%
+  # estimate predictive accuracy, reliability, and MSE
+  summarize(gblup_h2 = mean(Heritability),
+            gblup_pa = cor(predicted, Phenotype, use = "complete.obs"),
+            gblup_reliability = gblup_pa^2/gblup_h2,
+            gblup_bias_int = coef(lm(Phenotype ~ predicted))["(Intercept)"],
+            gblup_bias_slope = coef(lm(Phenotype ~ predicted))["predicted"],
+            gblup_mse = mean(Phenotype - predicted, na.rm = TRUE)^2) %>%
+  ungroup()
+
+head(gblup_summary)
+```
+
+### Summary of GBLUP results
+
+Export a summary table of results for GBLUP model (Table 1)
+
+```{r summarize gblup}
+table1 <- gblup_summary %>%
+  # calculate statistics for each trait
+  group_by(trait) %>%
+  summarize_at(vars(gblup_pa, 
+                    gblup_reliability, 
+                    gblup_bias_int, 
+                    gblup_bias_slope, 
+                    gblup_mse), 
+               list(mean = mean,
+                    se = ~sd(.)/sqrt(length(.)))) %>%
+  # took this out because it doesn't work as well for MSE
+  # mutate_if(is.numeric, round, 3) %>% 
+  ungroup() %>%
+  # add amino acid family ids
+  left_join(aa_fam, ., by = "trait") %>%
+  # reorder family names
+  mutate(family = fct_relevel(family, "aromatic", after = 4)) %>%
+  # sort by type of trait (abs, rel, fam) and family id
+  arrange(aa_cat, family) %>%
+  select(aa_cat, family, trait, gblup_pa_mean, gblup_pa_se, gblup_reliability_mean,
+         gblup_reliability_se, gblup_bias_int_mean, gblup_bias_slope_mean, gblup_mse_mean)
+
+# export table
+table1 %>%
+  write_csv(., "reports/table1_gblup_summary.csv")
+
+head(table1)
+```
+
+```{r plot gblup results}
+gblup_summary %>%
+  select(trait, cvnum, fold, gblup_h2, gblup_pa, gblup_reliability, gblup_bias_int, gblup_bias_slope, gblup_mse) %>% 
+  # order by predictive accuracy (decreasing)
+  mutate(trait = fct_reorder(trait, -gblup_pa)) %>%
+  # convert data to long format
+  gather(key = statistic, value = measurement, -trait, -cvnum, -fold) %>%
+  # set factor levels for plotting
+  mutate(statistic = fct_relevel(statistic, "gblup_pa", "gblup_reliability")) %>%
+  ggplot(., aes(trait, measurement, fill = statistic)) +
+  geom_boxplot() +
+  facet_grid(statistic ~ ., scales = "free") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")
+```
+
+# MultiBLUP
+
+### Visual check of cross-validations
+
+```{r multiblup checkcv}
+multiblup_pa %>%
+  filter(trait %in% "ile_t" & pathway %in% "aa_deg_bcat_haplo") %>% 
+  mutate(predicted = Profile1 + Effect) %>%
+  ggplot(aes(x = predicted, y = Phenotype)) +
+  geom_abline(intercept = 0, slope = 1) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_grid(cvnum ~ fold) +
+  theme_bw()
+```
+
+### Summary of results 
+
+Note that negative heritability estimates are set to 0 and heritability 
+estimates > 1 are set to 1  
+
+Count of how many times negative or > 1 heritabilities are observed for pathway/trait combinations. 
+
+```{r heritability summary}
+# filter out excluded pathways
+exclude <- c("aa_degradation", "aa_synthesis", "asp_protease", "cys_protease", "degradation_AAA", "degradation_autophagy", "degradation_subtilases", "glycolysis_cystolic", "glycolysis_plastid", "glycolysis_other", "metallo_protease", "ser_protease")
+
+# failed to converge (negative SE)
+multiblup_h2 %>% 
+  filter(!pathway %in% exclude,
+         Component %in% "Share_K1",
+         SD < 0) %>%
+  tally() 
+
+# negative heritability for SNP partition
+multiblup_h2 %>% 
+  filter(!pathway %in% exclude,
+         Component %in% "Share_K1",
+         Share < 0) %>%
+  group_by(pathway) %>%
+  tally() 
+```
+
+**Metrics:**
+
+- prediction accuracy = $r_{\widehat{g},g}$  
+- reliability = $r^2_{\widehat{g},g}/h^2$  
+- bias = $b(\widehat{g},g)$  
+- MSE = $\frac{1}{n}\sum{(g - \widehat{g})^2}$  
+
+```{r summarize multiblup}
+# restrict heritability range from 0-1
+multiblup_h2 <- multiblup_h2 %>%
+  filter(Component %in% "Share_K1") %>%
+  mutate(Share = ifelse(Share < 0, 0, Share),
+         Share = ifelse(Share > 1, 1, Share))
+
+multiblup_summary <- multiblup_pa %>% 
+  left_join(., multiblup_h2, by = c("trait", "pathway")) %>%
+  left_join(., gblup_h2, by = "trait") %>%
+  filter(Component %in% "Share_K1") %>% 
+  # group by trait, cross-validation, and fold
+  group_by(trait, pathway, cvnum, fold) %>% 
+  # add mean value for training set to predicted values 
+  mutate(predicted = Profile1 + Effect) %>%
+  # estimate predictive accuracy, reliability, and MSE
+  summarize(multiblup_h2 = mean(Share),
+            gblup_h2 = mean(Heritability),
+            multiblup_pa = cor(predicted, Phenotype, use = "complete.obs"),
+            multiblup_reliability = multiblup_pa^2/gblup_h2,
+            multiblup_bias_int = coef(lm(Phenotype ~ predicted))["(Intercept)"],
+            multiblup_bias_slope = coef(lm(Phenotype ~ predicted))["predicted"],
+            multiblup_mse = mean(predicted - Phenotype, na.rm = TRUE)^2) %>%
+  ungroup() 
+
+head(multiblup_summary)
+```
+
+# compare GBLUP and MultiBLUP
+
+Takes difference in values between GBLUP and MultiBLUP models
+
+Use downstream for figures and summarizing results.
+
+```{r comparison}
+compare <- 
+  left_join(gblup_summary, multiblup_summary, by = c("trait", "cvnum", "fold")) %>%
+  group_by(trait, pathway, cvnum, fold) %>% 
+  filter(!pathway %in% exclude) %>%
+  mutate(pa_diff = multiblup_pa - gblup_pa,
+         reliability_diff = multiblup_reliability - gblup_reliability,
+         bias_int_diff = abs(multiblup_bias_int) - abs(gblup_bias_int),
+         bias_slope_diff = abs(multiblup_bias_slope - 1) - abs(gblup_bias_slope - 1),
+         mse_diff = multiblup_mse - gblup_mse) %>% 
+  dplyr::select(trait, pathway, cvnum, fold, pa_diff, reliability_diff, bias_int_diff, bias_slope_diff, mse_diff) %>%
+  ungroup()
+
+head(compare)
+```
+
+# Save results
+
+Saved as `reports/model_summary.RData`
+
+```{r save rdata}
+gblup_summary <- left_join(gblup_summary, aa_fam)
+
+save(gblup_summary, multiblup_summary, compare, file = "reports/model_summary.RData")
+```
+
+
+
+
