@@ -17,14 +17,23 @@ To install snakemake in a virtual environment, run:
 For future use, activate this environment with:
 `source activate multiblup`
 
-Setup
+Data
 ------------
+Edit the config.yaml file to specify the paths for the genotype and phenotype data.
+
+### Genotype data
 Before running Snakemake, download the **Arabidopsis Regional Mapping (RegMap) data** ([Horton et al. 2012](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3267885/)):  
 `cd data/external`  
 `wget https://github.com/Gregor-Mendel-Institute/atpolydb/blob/master/250k_snp_data/call_method_75.tar.gz`  
 `tar -xvf call_method_75.tar.gz` 
 
-Edit the config.yaml file to specify the paths for the genotype and phenotype data.
+### Phenotype data
+
+#### data/raw/pheno_file
+Environment corrected BLUPs for 65 free amino acid traits measured in 313 accessions of _Arabidopsis thaliana_ as reported by Angelovici et al. 2013  
+
+### data/raw/pheno_file_pcs
+Phenotypes adjusted for population structure
 
 Snakemake
 ------------
