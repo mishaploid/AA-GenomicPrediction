@@ -82,6 +82,10 @@ target/
 /models/
 *.RData
 
+# exclude old scripts
+/src/old_versions/
+/reports/190918_archive/
+
 # log files
 /slurm_out
 /snakemake_logs

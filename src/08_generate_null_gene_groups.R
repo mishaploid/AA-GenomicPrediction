@@ -1,5 +1,5 @@
 ################################################################################
-## Select SNPs to generate a null distribution
+## AA-GP: Select SNPs to generate a null distribution
 ## Author: Sarah Turner Hissong
 ## Last modified: 25 December 2018
 
@@ -55,7 +55,7 @@ for (i in args[1]:end) {
   arrange(chromosome, position)
 
   dir.create("data/processed/random_sets", showWarnings = FALSE)
-  
+
   write.table(random, paste0("data/processed/random_sets/null_", i, ".txt"))
 
   # export snplists for LDAK

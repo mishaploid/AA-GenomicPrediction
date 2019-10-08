@@ -1,3 +1,7 @@
+################################################################################
+## AA-GP: uniform sampling for null gene group sizes
+## Sarah Turner-Hissong
+## Updated 12 June 2019
 
 # uniform distribution of markers up to 50000
 gene_group_sizes <- round(runif(5000, 1, 50000))

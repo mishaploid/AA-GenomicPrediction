@@ -51,21 +51,6 @@ gblup_pa <- tibble(file = list.files(path = "models/gblup",
   unnest(data) %>%
   left_join(., training_coef, by = c("trait", "cvnum", "fold"))
 
-  # nest(-trait, -cvnum, -fold) %>%
-  # mutate(fit = map(data, ~ lm(Profile1 ~ Phenotype, data = .)), results = map(fit, augment)) %>%
-  # unnest(results) %>%
-  # group_by(trait, cvnum, fold) %>%
-  # summarize(gblup_cor = cor(Profile1, Phenotype, use = "complete.obs"),
-  #   gblup_mse = sum((.resid/(1-.hat))^2)/length(.resid)) %>%
-  # select(trait, cvnum, fold, gblup_cor, gblup_mse) %>%
-  # ungroup()
-  # unnest(data) %>%
-  # group_by(trait, cvnum, fold) %>%
-  # mutate(cor = cor(Phenotype, Profile1, use = "complete.obs")) %>%
-  # summarise_at(., "cor", .funs = mean) %>%
-  # ungroup() %>%
-  # select(trait, cvnum, fold, cor)
-
 head(gblup_pa)
 
 save(gblup_h2, gblup_llik, gblup_pa, file = "reports/gblup.RData")
