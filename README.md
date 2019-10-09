@@ -50,7 +50,7 @@ The `rule all:` section is a pseudorule that tracks the expected output of each 
 To run the workflow, edit cluster configuration settings in `submit.json` then run `submit.sh`
 
 ### Rules
-rules/common.smk - specifies locaiton of config.yaml file
+rules/common.smk - specifies location of config.yaml file
 
 #### rules/prep_data.smk
 - filter and convert genotype data to PED format
