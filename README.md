@@ -29,10 +29,10 @@ Before running Snakemake, download the **Arabidopsis Regional Mapping (RegMap) d
 
 ### Phenotype data
 
-#### data/raw/pheno_file
+- **data/raw/pheno_file**  
 Environment corrected BLUPs for 65 free amino acid traits measured in 313 accessions of _Arabidopsis thaliana_ as reported by [Angelovici et al. 2013](http://www.plantcell.org/content/25/12/4827#sec-12)  
 
-### data/raw/pheno_file_pcs
+- **data/raw/pheno_file_pcs**  
 Phenotypes adjusted for population structure
 
 Snakemake
