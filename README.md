@@ -27,6 +27,9 @@ Before running Snakemake, download the **Arabidopsis Regional Mapping (RegMap) d
 `wget https://github.com/Gregor-Mendel-Institute/atpolydb/blob/master/250k_snp_data/call_method_75.tar.gz`  
 `tar -xvf call_method_75.tar.gz` 
 
+- **data/raw/gwas_results.RData**  
+GWAS results from [Angelovici et al. 2013](http://www.plantcell.org/content/25/12/4827#sec-12) 
+
 ### Phenotype data
 
 - **data/raw/pheno_file**  
