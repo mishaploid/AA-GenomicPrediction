@@ -44,6 +44,8 @@ This file specifies variable names for use in a snakemake workflow. There are no
 
 The `rule all:` section is a pseudorule that tracks the expected output of each command in the rule files. 
 
+To run the workflow, edit cluster configuration settings in `submit.json` then run `submit.sh`
+
 ### Rules
 rules/common.smk - specifies locaiton of config.yaml file
 
