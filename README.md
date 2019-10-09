@@ -51,29 +51,29 @@ rules/common.smk - specifies locaiton of config.yaml file
 - filter and convert genotype data to PED format
 - exports TAIR 10 ensembl gene ids for SNP data 
 - calculate SNP weightings (these aren't actually used, could skip)
-- runs PCA and exports PC adjusted phenotype file
+- run PCA and exports PC adjusted phenotype file
 
 #### rules/cross_validation.smk 
-- creates training and testing sets for cross validation
+- create training and testing sets for cross validation
 
 #### rules/gblup.smk
-- exports kinship matrix for all SNPs 
-- estimates variances and heritability
+- export kinship matrix for all SNPs 
+- estimate variances and heritability
 - genomic prediction and cross-validation (REML + calculating BLUPs)
-- summarizes GBLUP output (`reports/gblup.Rdata`)
+- summarize GBLUP output (`reports/gblup.Rdata`)
 
 #### rules/multiblup.smk
-- filters exports list of pathway SNPs (includes a 2.5 kb buffer before and after each pathway gene)
-- calculates kinship matrices for each pathway (list1) and all remaining SNPs (list2) 
-- estimates variances and heritability for each SNP partition
+- filter and export list of pathway SNPs (includes a 2.5 kb buffer before and after each pathway gene)
+- calculate kinship matrices for each pathway (list1) and all remaining SNPs (list2) 
+- estimate variances and heritability for each SNP partition
 - genomic prediction and cross-validation with multiple kernels/random effects (REML + calculating BLUPs)
-- summarizes MultiBLUP output (`reports/multiblup.RData`)
+- summarize MultiBLUP output (`reports/multiblup.RData`)
 
 #### rules/null_distribution.smk
-- creates 5000 random gene groups with a uniform distribution of SNPs 
-- calculates kinship matrices for each random group 
-- estimates variances and heritability for each random SNP set 
-- summarizes results across all 5000 gene groups (`reports/lr_null_results.csv`)
+- generate 5000 random gene groups with a uniform distribution of SNPs 
+- calculate kinship matrices for each random group 
+- estimate variances and heritability for each random SNP set 
+- summarize results across all 5000 gene groups (`reports/lr_null_results.csv`)
 
 Notebooks
 ------------
