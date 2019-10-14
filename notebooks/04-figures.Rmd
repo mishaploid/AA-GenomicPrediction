@@ -1,21 +1,20 @@
 ---
 title: "AA-GP: Figures"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_notebook:
     toc: yes
     toc_float: yes
-date: "`r format(Sys.time(), '%d %B, %Y')`"
 editor_options: 
   chunk_output_type: inline
 ---
-
-## Setup
 
 ```{r setup}
 knitr::opts_knit$set(root.dir = "~/Documents/AA-GenomicPrediction")
 
 library(tidyverse)
 library(broom)
+library(ggrepel)
 
 # set colorblind friendly palette
 cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
@@ -24,6 +23,8 @@ cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00",
 ```{r load results}
 load("reports/gblup.RData")
 load("reports/model_summary.RData")
+load("~/Documents/AA-GenomicPrediction/reports/model_summary.RData")
+
 ```
 
 ## Figure 1 - GBLUP
@@ -51,13 +52,13 @@ gblup_summary %>%
   ylab("Prediction accuracy (r)")
 
 
-ggsave("reports/figures/Fig1.tiff", height = 3, width = 7.5)
+ggsave("reports/figures/Fig1.pdf", height = 3, width = 7.5)
 
 ```
 
-## Figure 3 - MultiBLUP results
+## Figure 2 - MultiBLUP results
 
-```{r multiblup results}
+```{r multiblup results, results = "hide"}
 fam <- data.frame(trait = gblup_summary$trait, family = gblup_summary$family,
                   aa_cat = gblup_summary$aa_cat)
 
@@ -133,199 +134,309 @@ multiblup_pass %>%
            size = guide_legend(ncol = 4, byrow = TRUE)) +
     scale_y_discrete(position = "right") 
 
-ggsave("reports/figures/Fig2.eps", height = 4, width = 7.5, device = "eps")
+# ggsave("reports/figures/Fig2.eps", height = 4, width = 7.5, device = "eps")
 
 ```
 
-## Figure 4 - GBLUP vs MultiBLUP
+## Figure 3 - GBLUP vs MultiBLUP
 
-```{r fig 4}
-load("reports/model_summary.RData")
+```{r read in data}
+# multiblup results
+multiblup_pass <- read_csv("reports/multiblup_pass.csv")
 
-aa_cat <- gblup_summary[,c(1,10)] %>% 
-  distinct()
+# gwas results
+load("data/raw/gwas_results.RData")
 
-plotdf <- compare %>%
-  left_join(., aa_cat) %>% 
-  inner_join(multiblup_pass, by = c("trait", "pathway")) %>%
-  dplyr::select(-multiblup_h2) %>% # -lr_pass, -h2_pass, -pa_pass) %>%
-  group_by(trait, pathway, cvnum, fold, category) %>%
-  summarize_if(is.numeric, mean) %>%
-  ungroup() %>%
-  group_by(trait, category) %>%
-  filter(mean(pa_diff) >= 0.01) %>%
-  ungroup() %>%
-  gather(key = statistic, value = value, -trait, -pathway, -cvnum, -fold, -category) %>%
-  left_join(., aa_cat, by = "trait") %>%
-  filter(statistic %in% c("pa_diff")) %>%
-  mutate(aa_cat = fct_relevel(aa_cat, "relative", after = 1)) %>%
-  mutate_if(is.character, as.factor)
-
-# library(cowplot)
-
-plotdf %>%
-  # filter(category == "amino\nacid") %>%
-  mutate(category = fct_relevel(category, "specialized", after = 2)) %>%
-  ggplot(., aes(reorder(trait, as.numeric(aa_cat)), value, fill = aa_cat, col = aa_cat)) +
-  scale_fill_manual(values = c("#66a61e", "#d95f02", "#7570b3")) + 
-  scale_colour_manual(values = c("#66a61e", "#d95f02", "#7570b3")) + 
-  geom_abline(intercept = 0, slope = 0, col = "darkgray") + 
-  geom_point(position = position_jitterdodge(dodge.width = 1), size = 0.75) + 
-  geom_boxplot(col = "grey25", position = position_dodge(width = 0.9), 
-               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
-  facet_grid(aa_cat ~ category + pathway, scales = "free_x", space = "free") +
-  # facet_wrap(~pathway + category, scales = "free_x") +
-  ylim(-0.5, 0.5) +
-  theme_classic() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        strip.text.x = element_text(angle = 90)) + 
-  xlab("") +
-  ylab(expression(Delta*italic(r))) 
-
-ggsave("reports/figures/Fig4.pdf", height = 8, width = 12, device = "pdf")
-
-
-```
+exclude <- c("aa_deg_bcat", "aa_syn_nobcat","aa_synthesis", "aa_degradation",
+             "asp_protease", "cys_protease", "degradation_AAA", "degradation_autophagy",
+             "degradation_subtilases", "glycolysis_cystolic", "glycolysis_plastid", "glycolysis_other",
+             "metallo_protease", "protein_degradation_old", "ser_protease")
   
-```{r scratch}
-multiblup_table <- 
-  left_join(gblup_summary, multiblup_summary, by = c("trait", "cvnum", "fold")) %>%
-  group_by(trait, pathway, cvnum, fold) %>% 
-  # filter(multiblup_h2 > 0) %>% 
-  mutate(pa_diff = multiblup_pa - gblup_pa,
-         reliability_diff = multiblup_reliability - gblup_reliability,
-         bias_diff = multiblup_bias - gblup_bias,
-         mse_diff = multiblup_mse - gblup_mse) %>%
-  group_by(trait, pathway) %>% 
-  # filter(mean(pa_diff) >= 0.05) %>%
-  # select(trait, pathway, gblup_pa, multiblup_pa, 
-  #        gblup_reliability, multiblup_reliability,
-  #        gblup_bias, multiblup_bias, 
-  #        gblup_mse, multiblup_mse, pa_diff, reliability_diff) %>%
-  # summarize_if(is.numeric, mean) %>%
+pathways <- tibble(file = list.files(path="data/processed/pathways", 
+                                     pattern = "*.txt", 
+                                     full.names = TRUE, 
+                                     recursive = TRUE)) %>%
+  separate(file, sep = "/", 
+           into = c("dir", "dir2", "dir3", "pathway"),
+           remove = FALSE) %>%
+  mutate(data = lapply(file, read.table, header = TRUE, na = c("", "NA")),
+         data = lapply(data, mutate_all, as.character)) %>%
+  unnest(data) %>%
+  mutate(pathway = gsub(".txt", "", pathway)) %>%
+  filter(!pathway %in% exclude) %>%
+  mutate(position = as.numeric(position),
+         pathway = fct_recode(pathway,
+                              aa_degradation = "aa_deg_bcathaplo",
+                              aa_synthesis = "aa_syn_nobcathaplo")) 
+
+# combine with multiblup results
+pathways <- left_join(pathways, multiblup_pass) %>%
+  select(trait, pathway, chromosome, snp_id, position, 
+         ensembl_gene_id.y, external_gene_name, BINCODE, NAME)
+```
+
+
+```{r duplicated SNPs}
+# find duplicate snps
+pathways %>%
+  filter(snp_id %in% unique(.[["snp_id"]][duplicated(.[['snp_id']])])) %>%
+  group_by(pathway) %>%
+  tally()
+```
+
+# adjust FDR by pathway
+```{r}
+joined <- full_join(gwas_results, pathways, c("Position" = "position",
+                                              "trait")) 
+
+fdr_corrected <- joined %>% 
+  group_by(trait, pathway) %>%
+  drop_na(pathway, Chromosome) %>%
+  mutate(new_fdr = p.adjust(P.value, 
+                            method = "fdr", 
+                            n = length(snp_id)),
+         fdr_n = length(snp_id)) %>%
   ungroup() 
-  # write_csv("reports/multiblup_table.csv")
-
-fam <- select(gblup_summary, trait, family) %>% 
-  distinct()
-
-multiblup_table %>%
-  ungroup() %>% 
-  select(-pa_diff, -reliability_diff) %>% 
-  # select(trait, pathway, pa_diff) %>%
-  filter(!pathway %in% c("glycolysis_cystolic", "glycolysis_other", 
-                       "AAA-type", "autophagy", "degradation_subtilases", "cys_protease",
-                       "metallo_protease", "ser_protease")) %>%
-  left_join(., fam) %>% 
-  # filter(!pathway %in% c("aa_degradation", "aa_synthesis")) %>%
-  # mutate(pathway = fct_recode(pathway,
-  #                           "aa_synthesis" = "aa_syn_nobcat",
-  #                           "aa_degradation" = "aa_deg_bcat"),
-         # pathway = fct_relevel(pathway, "aa_synthesis", 
-         #                       "aa_degradation",
-         #                       "aa_transport",
-         #                       "isoprenoids",
-         #                       "phenylpropanoids",
-         #                       "S_containing")) %>%
-  gather(key = "metric", value = "value", -trait, -pathway, -family) %>%
-  separate(metric, pattern = "_", into = c("method", "metric")) %>% 
-  filter(metric %in% c("pa")) %>% 
-  # mutate(metric = fct_relevel(metric, 
-  #                             "pa", "reliability", "bias", "mse")) %>% 
-  ggplot(., aes(trait, value, fill = method, col = method)) +
-  scale_fill_manual(values = c("#d8b365", "#5ab4ac")) + 
-  scale_colour_manual(values = c("#d8b365", "#5ab4ac")) + 
-  geom_abline(intercept = 0, slope = 0, col = "darkgray") + 
-  geom_point(position = position_jitterdodge(dodge.width = .8, 
-                                             jitter.width = 0.2), size = 0.5) + 
-  geom_boxplot(col = "grey25", position = position_dodge(width = 0.8), 
-               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
-  facet_grid(.~pathway, scale = "free", space = "free_x") +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-        strip.text.x = element_text(angle = 90))
-
-ggsave("reports/figures/Fig4.png", height = 4, width = 8)
-  
-multiblup_table %>% 
-  ungroup() %>% 
-  select(-pa_diff) %>% 
-  left_join(., fam) %>% 
-  filter(!pathway %in% c("aa_degradation", "aa_synthesis")) %>%
-  mutate(pathway = fct_recode(pathway,
-                            "aa_synthesis" = "aa_syn_nobcat",
-                            "aa_degradation" = "aa_deg_bcat")) %>%
-  gather(key = "metric", value = "value", -trait, -pathway, -family) %>%
-  separate(metric, pattern = "_", into = c("method", "metric")) %>% 
-  mutate(metric = fct_relevel(metric, 
-                              "pa", "reliability", "bias", "mse")) %>% 
-  ggplot(., aes(trait, value, fill = method)) +
-  geom_boxplot() +
-  facet_grid(metric~pathway, scale = "free", space = "free_x") +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 
 ```
 
 ```{r}
+# manhattan plot style from https://www.r-graph-gallery.com/wp-content/uploads/2018/02/Manhattan_plot_in_R.html
+plotdf <- joined %>%
+  # chr length
+  group_by(Chromosome) %>%
+  summarize(chr_len = max(Position)) %>%
+  # cumulative position for each chr
+  mutate(tot = cumsum(chr_len)-chr_len) %>%
+  select(-chr_len) %>%
+  # join with data
+  left_join(joined, ., by = c("Chromosome")) %>%
+  full_join(fdr_corrected, .) %>% 
+  # add cumulative snp position
+  arrange(chromosome.y, Position) %>%
+  mutate(BP = Position + tot) %>%
+  # highlight info
+  mutate(highlight = ifelse(new_fdr < 0.10, "yes", "no"),
+         external_gene_name = 
+             coalesce(external_gene_name, ensembl_gene_id.y)) %>%
+  filter(!is.na(Chromosome))
 
-foo <- multiblup_summary %>% 
-  left_join(gblup_summary) %>% 
-  filter(!pathway %in% c("glycolysis_cystolic", "glycolysis_other", 
-                     "AAA-type", "autophagy", "degradation_subtilases", "cys_protease",
-                     "metallo_protease", "ser_protease")) %>%
-  gather(key = method, value = value, gblup_pa, multiblup_pa,
-         gblup_reliability, multiblup_reliability, gblup_bias,
-         multiblup_bias, gblup_mse, multiblup_mse) %>%
-  group_by(trait, pathway) %>%
- # # filter(n() == 100) %>% 
-  summarise_at("value", list(pa_gblup = ~mean(.[method == "gblup_pa"]),
-                         pa_multi = ~mean(.[method == "multiblup_pa"]),
-                         pa_dif = ~pa_multi - pa_gblup, 
-                         n = ~n(),
-                         pa_p_value = ~t.test(.[method == "multiblup_pa"], 
-                                              .[method == "gblup_pa"],
-                                          alternative = "greater", paired = TRUE)$p.value,
-                         r_gblup = ~mean(.[method == "gblup_reliability"]),
-                         r_multi = ~mean(.[method == "multiblup_reliability"]),
-                         r_dif = ~r_multi - r_gblup, 
-                         n = ~n(),
-                         r_p_value = ~t.test(.[method == "multiblup_reliability"], 
-                                              .[method == "gblup_reliability"],
-                                          alternative = "greater", paired = TRUE)$p.value,
-                         bias_gblup = ~mean(.[method == "gblup_bias"]),
-                         bias_multi = ~mean(.[method == "multiblup_bias"]),
-                         bias_dif = ~bias_multi - bias_gblup, 
-                         n = ~n(),
-                         bias_p_value = ~t.test(.[method == "multiblup_bias"], 
-                                              .[method == "gblup_bias"],
-                                              paired = TRUE)$p.value,
-                         mse_gblup = ~mean(.[method == "gblup_mse"]),
-                         mse_multi = ~mean(.[method == "multiblup_mse"]),
-                         mse_dif = ~mse_multi - mse_gblup, 
-                         n = ~n(),
-                         mse_p_value = ~t.test(.[method == "multiblup_mse"], 
-                                              .[method == "gblup_mse"],
-                                          alternative = "greater", paired = TRUE)$p.value))
- 
-bar <- foo %>%
-  ungroup() %>%
-  filter(pa_dif > 0.01) %>%
-  select(-pa_dif, -r_dif, -mse_dif, -bias_dif) %>%
-  mutate_if(is.numeric, round, 4) %>% 
-  write_csv("reports/prediction_summary.csv")
+# x axis 
+axisdf <- plotdf %>% 
+  group_by(Chromosome) %>% 
+  summarize(center = (max(BP) + min(BP))/2)
 
-#  ungroup() %>%
- #  group_by(trait) %>%
- #  mutate(t_fdr = p.adjust(p_value, method = "fdr", n = 28),
- #    wilcox_fdr = p.adjust(wilcox_p, method = "fdr", n = 28)) 
+sig_traits <- plotdf %>%
+  filter(new_fdr <= 0.10) %>%
+  select(pathway) %>%
+  distinct() %>%
+  as_tibble()
+
+```
+
+```{r table 4}
+aa_fam <- unique((plotdf$trait)) %>%
+  as_tibble() %>%
+  mutate(
+         # add amino acid biochemical family ids (based on precursor)
+         family = ifelse(grepl("asp|thr|met|asp|AspFam", value) & !grepl("ile", value), 
+                         "aspartate", 
+                         ifelse(grepl("arg|glu|gln|pro|his|GluFam", value),
+                                "glutamate",
+                                ifelse(grepl("gly|ser|SerFam", value),
+                                       "serine",
+                                       ifelse(grepl("phe|tyr|trp|ShikFam", value),
+                                              "aromatic",
+                                              ifelse(grepl("Total", value),
+                                                     "total", "BCAA_pyruvate"))))),
+         # add type of measurement (absolute, relative, ratio)
+         aa_cat = ifelse(!grepl("_", value), "absolute",
+                         ifelse(grepl("_t", value), "relative",
+                                "family"))) %>%
+  rename(trait = "value")
+
+head(aa_fam)
+```
+
+```{r}
+s3table <- plotdf %>%
+  left_join(aa_fam, plotdf, by = "trait") %>%
+  filter(new_fdr <= 0.10) %>%
+  select(family, trait, pathway, Chromosome, Position, P.value, fdr_n, 
+         `FDR_Adjusted_P-values`, ensembl_gene_id.y, external_gene_name) %>%
+  arrange(family, trait, pathway) %>%
+  write_csv("reports/s3table.csv")
+
+head(s3table)
+```
+
+```{r}
+p <- list() 
+
+for (i in sig_traits$pathway) {
+  t <- paste(i)
+  
+  print(t)
+  
+  df <- plotdf %>%
+    drop_na(pathway) %>% 
+    filter(pathway %in% t) %>%
+    mutate(external_gene_name = 
+             coalesce(external_gene_name, ensembl_gene_id.y))
+  
+  p[[i]] <- ggplot(df, aes(x = BP, y = -log10(P.value))) +
+      geom_point(aes(color = as.factor(Chromosome)), alpha = 0.8) +
+      scale_colour_manual(values = rep(c("grey", "skyblue"), 5)) +
+      scale_x_continuous(label = axisdf$Chromosome,
+                         breaks = axisdf$center) +
+      scale_y_continuous(expand = c(0,0.1)) +
+      geom_point(data = subset(df, highlight == "yes"),
+                 colour = "orange", size = 2) +
+      geom_label_repel(data = subset(df, highlight == "yes"),
+               aes(label = external_gene_name), size = 2) +
+      theme_bw() +
+      theme(legend.position = "none") +
+      facet_wrap(~trait) +
+      ggtitle(t) 
+  print(p[[i]])
+}
 ```
 
 
+```{r}
+his <- plotdf %>%
+  filter(trait %in% "his") %>% 
+  ggplot(., aes(x = BP, y = -log10(P.value))) +
+  geom_point(aes(color = as.factor(Chromosome)), alpha = 0.3, size = 0.75) +
+  scale_colour_manual(values = rep(c("grey90", "grey80"), 5)) +
+  scale_x_continuous(label = axisdf$Chromosome,
+                     breaks = axisdf$center) +
+  scale_y_continuous(expand = c(0,0.1)) +
+  geom_point(data = subset(plotdf, pathway == "protein_folding" &
+                             trait == "his"),
+             colour = "#5ab4ac", shape = 17) + 
+  geom_point(data = subset(plotdf, highlight == "yes" &
+                             pathway == "protein_folding" & 
+                             trait == "his"),
+             colour = "orange", size = 2, shape = 17) +
+  geom_label_repel(data = subset(plotdf, highlight == "yes" &
+                                   pathway == "protein_folding" &
+                                   trait == "his"),
+                   aes(label = external_gene_name), size = 1.5) +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0, size = 12)) +
+  xlab("Chromosome") + 
+  labs(subtitle = "His - Protein folding")
 
 
+his_glufam <- plotdf %>%  
+  filter(trait %in% "his_GluFam") %>% 
+  ggplot(., aes(x = BP, y = -log10(P.value))) +
+  geom_point(aes(color = as.factor(Chromosome)), alpha = 0.3, size = 0.75) +
+  scale_colour_manual(values = rep(c("grey90", "grey80"), 5)) +
+  scale_x_continuous(label = axisdf$Chromosome,
+                     breaks = axisdf$center) +
+  scale_y_continuous(expand = c(0,0.1)) +
+  geom_point(data = subset(plotdf, pathway == "aa_degradation" &
+                             trait == "his_GluFam"),
+             colour = "#5ab4ac", shape = 17) + 
+  geom_point(data = subset(plotdf, highlight == "yes" &
+                             pathway == "aa_degradation" & 
+                             trait == "his_GluFam"),
+             colour = "orange", size = 2, shape = 17) +
+  geom_label_repel(data = subset(plotdf, highlight == "yes" &
+                                   pathway == "aa_degradation" &
+                                   trait == "his_GluFam"),
+                   aes(label = external_gene_name), size = 1.5) +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0, size = 12)) +
+  xlab("Chromosome") + 
+  labs(subtitle = "His_GluFam - Amino acid degradation")
+```  
+
+```{r}
+
+multiblup_table <- 
+  left_join(gblup_summary, multiblup_summary, by = c("trait", "cvnum", "fold")) %>%
+  group_by(trait, pathway, cvnum, fold) %>% 
+  group_by(trait, pathway) %>% 
+  select(trait, pathway, gblup_pa, multiblup_pa, 
+         gblup_reliability, multiblup_reliability,
+         gblup_bias_int, multiblup_bias_int,
+         gblup_bias_slope, multiblup_bias_slope,
+         gblup_mse, multiblup_mse) 
+
+lines <- data.frame(metric = c("accuracy", "reliability", "intercept", "slope", "MSE"),
+                    intercept = c(0, 0, 0, 1, 0))
+
+boxes1 <- multiblup_table %>%
+  ungroup() %>% 
+  # select(trait, pathway, pa_diff) %>%
+  filter(pathway == "protein_folding" & trait == "his") %>% #|
+         # pathway == "aa_degradation" & trait == "his_GluFam") %>%
+  gather(key = "metric", value = "value", -trait, -pathway) %>%
+  separate(metric, sep = "_", into = c("method", "metric"), extra = "merge") %>% 
+  mutate(metric = fct_recode(metric, "accuracy" = "pa", "intercept" = "bias_int", "slope" = "bias_slope", "MSE" = "mse"),
+         metric = fct_relevel(metric,
+                              "accuracy", "reliability", "intercept", "slope", "MSE")) %>%
+  ggplot(., aes(method, value, fill = method, col = method)) +
+  scale_fill_manual(values = c("#d8b365", "#5ab4ac")) + 
+  scale_colour_manual(values = c("#d8b365", "#5ab4ac")) + 
+  geom_hline(data = lines, aes(yintercept = intercept), col = "darkgray") + 
+  geom_point(position = position_jitterdodge(dodge.width = .8, 
+                                             jitter.width = 0.2), size = 0.5) + 
+  geom_boxplot(col = "grey25", position = position_dodge(width = 0.8), 
+               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
+  facet_wrap(. ~ metric, scales = "free", nrow = 1) +
+  theme_bw() +
+  theme(# axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1),
+        legend.position = "none",
+        text = element_text(size = 10),
+        axis.title.y = element_blank()) +
+  labs(subtitle = "His - Protein folding")
+
+boxes1
+
+boxes2 <- multiblup_table %>%
+  ungroup() %>% 
+  # select(trait, pathway, pa_diff) %>%
+  filter(pathway == "aa_degradation" & trait == "his_GluFam") %>%
+  gather(key = "metric", value = "value", -trait, -pathway) %>%
+  separate(metric, sep = "_", into = c("method", "metric"), extra = "merge") %>% 
+  mutate(metric = fct_recode(metric, "accuracy" = "pa", "intercept" = "bias_int", "slope" = "bias_slope", "MSE" = "mse"),
+         metric = fct_relevel(metric,
+                              "accuracy", "reliability", "intercept", "slope", "MSE")) %>%
+  ggplot(., aes(method, value, fill = method, col = method)) +
+  scale_fill_manual(values = c("#d8b365", "#5ab4ac")) + 
+  scale_colour_manual(values = c("#d8b365", "#5ab4ac")) + 
+  geom_hline(data = lines, aes(yintercept = intercept), col = "darkgray") + 
+  geom_point(position = position_jitterdodge(dodge.width = .8, 
+                                             jitter.width = 0.2), size = 0.5) + 
+  geom_boxplot(col = "grey25", position = position_dodge(width = 0.8), 
+               outlier.colour = NA, width = 0.5, alpha = 0.5) + 
+  facet_wrap(. ~ metric, scales = "free", nrow = 1) +
+  theme_bw() +
+  theme(# axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        legend.position = "none",
+        text = element_text(size = 10),
+        axis.title.y = element_blank()) +
+  labs(subtitle = "His_GluFam - Amino acid degradation") 
+
+boxes2
+
+```
+
+```{r}
+theme_set(theme_cowplot(font_size = 10))
+
+pt1 <- plot_grid(boxes1, boxes2, nrow = 2, labels = c('A', 'B'))
+
+pt2 <- plot_grid(his, his_glufam, ncol = 2, labels = c('C', 'D'))
+
+plot_grid(pt1, pt2, nrow = 2, labels = NULL)
+
+ggsave("reports/figures/Fig3.pdf", width = 7, height = 7, units = "in")
+```
 
 
-
-
-
+  
