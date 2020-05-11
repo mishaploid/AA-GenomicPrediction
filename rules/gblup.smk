@@ -19,7 +19,8 @@ rule gblup_kins:
         shell("{ldak} --calc-kins-direct {params.outdir} \
         --bfile {params.bfile} \
         --ignore-weights YES \
-        --power 0")
+        --power 0 \
+        --kinship-raw YES")
 
 ### GBLUP model to estimate genetic variances
 ### Run all phenotypes simultaneously (--mpheno -1)
@@ -28,7 +29,8 @@ rule gblup_kins:
 rule gblup_h2:
     input:
         pheno = config["pheno_file"],
-        kins = "models/gblup/kinships.grm.id"
+        kins = "models/gblup/kinships.grm.id",
+        covar = config["covar"]
     output:
         "models/gblup_h2/{trait}.gblup.reml"
     params:
@@ -39,7 +41,9 @@ rule gblup_h2:
         shell("{ldak} --reml {params.out} \
         --pheno {input.pheno} \
         --pheno-name {params.trait} \
-        --grm {params.grm}")
+        --grm {params.grm} \
+        --covar {input.covar} \
+        --constrain YES")
 
 ### GBLUP for genomic prediction - REML
 ### includes cross-validation
@@ -50,7 +54,8 @@ rule gblup_h2:
 rule gblup_reml:
     input:
         pheno = config["pheno_file"],
-        kins = "models/gblup/kinships.grm.id"
+        kins = "models/gblup/kinships.grm.id",
+        covar = config["covar"]
     output:
         reml = expand("models/gblup/{{trait}}.cv{cv}.{index}.reml", cv = CV, index = INDEX)
     params:
@@ -65,7 +70,9 @@ rule gblup_reml:
                 --pheno {input.pheno} \
                 --pheno-name {params.trait} \
                 --grm {params.grm} \
-                --keep {params.keep}{i}.train{j}")
+                --keep {params.keep}{i}.train{j} \
+                --covar {input.covar} \
+                --constrain YES")
 
 ### Step 4d: Calculate BLUPs
 ### extract BLUPs and calculate scores
@@ -84,8 +91,7 @@ rule gblup_blup:
         reml = "models/gblup/{trait}.cv",
         bfile = config["bfile"],
         keep = "data/processed/cross_validation/cv",
-        trait = "{trait}",
-        pc2 = "data/processed/pca.2"
+        trait = "{trait}"
     run:
         for i in CV:
             for j in INDEX:

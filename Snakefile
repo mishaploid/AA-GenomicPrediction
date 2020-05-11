@@ -109,8 +109,8 @@ rule all:
         # linkage disequilibrium adjusted weightings (not used for this workflow)
         snp_weightings = "data/processed/sections/weights.short",
         # principal components analysis to correct for population structure
-        pca = "models/pca/ld_pruned.bed",
-        pca_result = "data/raw/pheno_file_pcs",
+        # pca = "models/pca/ld_pruned.bed",
+        # pca_result = "data/raw/pheno_file_pcs",
         # create test and training indexes for cross-validation
         get_cv = expand("data/processed/cross_validation/cv{cv}.test{index}", cv = CV, index = INDEX),
         get_cv2 = expand("data/processed/cross_validation/cv{cv}.train{index}", cv = CV, index = INDEX),
@@ -118,27 +118,26 @@ rule all:
         gblup_kins = "models/gblup/kinships.grm.id",
         # heritability estimates for GBLUP
         gblup_h2 = expand("models/gblup_h2/{trait}.gblup.reml", trait = TRAIT),
-        # GBLUP cross-validation
+        # # GBLUP cross-validation
         gblup_reml = expand("models/gblup/{trait}.cv{cv}.{index}.reml", trait = TRAIT, cv = CV, index = INDEX),
         gblup_blup = expand("models/gblup/{trait}.cv{cv}.{index}.profile", cv = CV, index = INDEX, trait = TRAIT),
         gblup_results = "reports/gblup.RData",
-        # extract pathway information for MultiBLUP
-        multiblup_pathways = expand("data/processed/pathways/{pathway}/list1", pathway = PATHWAYS.keys()),
+        # # extract pathway information for MultiBLUP
+        # multiblup_pathways = expand("data/processed/pathways/{pathway}/list1", pathway = PATHWAYS.keys()),
         # kinship matrices for MultiBLUP model
         multiblup_kins = expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys()),
         # heritability for partitions in MultiBLUP model
         multiblup_h2 = expand("models/multiblup_h2/{pathway}/{trait}.multiblup.reml", pathway = PATHWAYS.keys(), trait = TRAIT),
-        # cross-validation for MultiBLUP
+        # # cross-validation for MultiBLUP
         multiblup_reml = expand("models/multiblup/{pathway}/{trait}.cv5.10.reml", pathway = PATHWAYS.keys(), trait = TRAIT),
         multiblup_blup = expand("models/multiblup/{pathway}/{trait}.cv5.10.profile", pathway = PATHWAYS, trait = TRAIT),
-        # summary of MultiBLUP results
+        # # summary of MultiBLUP results
         multiblup_results = "reports/multiblup.RData",
-        # null distribution
-        null_sampling = "data/interim/null_group_sizes.txt",
-        null_gene_groups = expand("data/processed/random_sets/null_{null}.txt", null = NULL),
-        calc_kins_control = expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
-        reml_h2_control = expand("models/null_h2/c_{random}/{trait}.h2.reml", \
-        random = 5000, trait = TRAIT),
+        # # null distribution
+        # null_sampling = "data/interim/null_group_sizes.txt",
+        # null_gene_groups = expand("data/processed/random_sets/null_{null}.txt", null = NULL),
+        # calc_kins_control = expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
+        reml_h2_control = expand("models/null_h2/c_{random}/{trait}.h2.reml", random = 5000, trait = TRAIT),
         null_results = "reports/lr_null_results.csv"
 
 # include rule files with commands to run each step

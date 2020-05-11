@@ -3,5 +3,8 @@
 bfile: data/processed/atregmap_clean
 
 # phenotype data
-pheno_raw: data/pheno_file
-pheno_file: data/raw/pheno_file_pcs
+pheno_raw: data/raw/pheno_file
+pheno_file: data/raw/pheno_file
+
+# covariates
+covar: data/processed/pc_covars

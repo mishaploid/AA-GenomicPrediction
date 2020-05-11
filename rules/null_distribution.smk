@@ -65,6 +65,7 @@ rule null_h2:
     input:
         pheno = config["pheno_file"],
         mgrm = expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
+        covar = config["covar"]
     output:
         out = expand("models/null_h2/c_{random}/{{trait}}.h2.reml", random = RANDOM),
     params:
@@ -77,7 +78,8 @@ rule null_h2:
             --pheno {input.pheno} \
             --pheno-name {params.trait} \
             --mgrm {params.mgrm}{r}/partition.list \
-            --constrain NO")
+            --covar {input.covar} \
+            --constrain YES")
 
 rule null_results:
     input:

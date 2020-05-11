@@ -39,12 +39,14 @@ rule multiblup_kins:
         --bfile {params.bfile} \
         --partition 1 \
         --ignore-weights YES \
-        --power 0")
+        --power 0 \
+        --kinship-raw YES")
         shell("{ldak} --calc-kins {params.outdir} \
         --bfile {params.bfile} \
         --partition 2 \
         --ignore-weights YES \
-        --power 0")
+        --power 0 \
+        --kinship-raw YES")
 
 ### MultiBLUP - REML model to estimate genetic variances (heritability)
 ### When there are multiple wildcards in output name, need to escape other
@@ -54,7 +56,8 @@ rule multiblup_kins:
 rule multiblup_h2:
     input:
         pheno = config["pheno_file"],
-        mgrm = expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys())
+        mgrm = expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys()),
+        covar = config["covar"]
     output:
         expand("models/multiblup_h2/{pathway}/{{trait}}.multiblup.reml", pathway = PATHWAYS.keys())
     params:
@@ -67,7 +70,8 @@ rule multiblup_h2:
             --pheno {input.pheno} \
             --pheno-name {params.trait} \
             --mgrm {params.mgrm}{p}/partition.list \
-            --constrain NO")
+            --covar {input.covar} \
+            --constrain YES")
 
 ################################################################################
 # MultiBLUP - genomic prediction
@@ -77,7 +81,8 @@ rule multiblup_h2:
 rule multiblup_reml:
     input:
         pheno = config["pheno_file"],
-        mgrm = expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys())
+        mgrm = expand("data/processed/pathways/{pathway}/partition.list", pathway = PATHWAYS.keys()),
+        covar = config["covar"]
     output:
         reml = expand("models/multiblup/{pathway}/{{trait}}.cv5.10.reml", pathway = PATHWAYS.keys())
     params:
@@ -94,7 +99,8 @@ rule multiblup_reml:
                     --pheno-name {params.trait} \
                     --mgrm {params.mgrm}{p}/partition.list \
                     --keep {params.keep}{i}.train{j} \
-                    --constrain NO")
+                    --covar {input.covar} \
+                    --constrain YES")
 
 ### MultiBLUP - calculate BLUPs
 ### extract BLUPs from REML and calculate scores

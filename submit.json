@@ -1,10 +1,10 @@
 {
     "__default__" :
     {
-        "partition" : "main",
-        "name" : "{rule}.{wildcards}",
-        "o" : "slurm_out/{rule}.{wildcards}.%j.out",
-        "cpus-per-task" : 1
+      "p" : "main",
+      "name" : "{rule}.{wildcards}",
+      "o" : "slurm_out/{rule}.{wildcards}.%j.out",
+      "cpus-per-task" : 1
     },
     "multiblup_pathways" :
     {
