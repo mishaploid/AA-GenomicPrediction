@@ -57,5 +57,23 @@
       "cpus-per-task" : 20,
       "p" : "main",
       "o" : "slurm_out/null_results.%j.out"
+    },
+    "null_pathway_sampling" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/null_pathway_sampling.%j.out"
+    },
+    "calc_kins_null_pathways" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/null_pathway_kins.%j.out"
+    },
+    "null_h2_pathways" :
+    {
+      "cpus-per-task" : 1,
+      "p" : "main",
+      "o" : "slurm_out/null_pathway_h2.%j.out"
     }
 }

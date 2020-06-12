@@ -3,8 +3,8 @@
 bfile: data/processed/atregmap_clean
 
 # phenotype data
-pheno_raw: data/raw/pheno_file
-pheno_file: data/raw/pheno_file
+pheno_raw: data/raw/aa360_raw_ratios.csv
+pheno_file: data/processed/aa360_BLUEs.txt
 
 # covariates
-covar: data/processed/pc_covars
+covar: data/processed/aa360_covars.txt

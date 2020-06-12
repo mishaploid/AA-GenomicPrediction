@@ -6,6 +6,12 @@
 library(tidyverse)
 library(broom)
 
+# phenotypes
+pheno <- read.table("data/raw/pheno_file", header = TRUE) %>%
+  gather(key = "trait",
+         value = "phenotype",
+         -FID, -IID)
+
 # heritability
 multiblup_h2 <- tibble(file = list.files(path = "models/multiblup_h2",
                                      pattern = ".share$",
@@ -34,23 +40,47 @@ multiblup_llik <- tibble(file = list.files(path = "models/multiblup_h2",
 head(multiblup_llik)
 
 # predictive ability
-training_coef <- tibble(file = list.files(path = "models/multiblup",
-                                          pattern = ".coeff$",
-                                          full.names = TRUE, recursive = TRUE)) %>%
-  separate(file, sep = "/|[.]", into = c("source", "method", "pathway", "trait", "cvnum", "fold", "fill"), remove = FALSE) %>%
-  mutate(data = lapply(file, read.table, header = TRUE)) %>%
-  unnest(data) %>%
-  select(trait, pathway, cvnum, fold, Effect)
 
-head(training_coef)
+# individuals used for test set
+cross_val <- tibble(filename = list.files(path = "data/processed/cross_validation",
+                    pattern = ".test", full.names = TRUE)) %>%
+             mutate(cvnum = word(filename, start = 4, end = 4, sep = "/|[.]"),
+                    fold = word(filename, start = 5, end = 5, sep = "/|[.]"),
+                    fold = gsub("test", "", fold)) %>%
+             mutate(file_contents = map(filename, ~read.table(., header = FALSE))) %>%
+             unnest(cols = c("file_contents")) %>%
+             rename("FID" = "V1",
+                    "IID" = "V2")
 
+# predictive accuracy
 multiblup_pa <- tibble(file = list.files(path = "models/multiblup",
-                                         pattern = ".profile$",
-                                         full.names = TRUE, recursive = TRUE)) %>%
+                                     pattern = ".pred$",
+                                     full.names = TRUE,
+                                     recursive = TRUE)) %>%
   separate(file, sep = "/|[.]", into = c("source", "method", "pathway", "trait", "cvnum", "fold"), remove = FALSE) %>%
   mutate(data = lapply(file, read.table, header = TRUE)) %>%
   unnest(data) %>%
-  left_join(., training_coef, by = c("pathway", "trait", "cvnum", "fold"))
+  left_join(pheno, ., by = c("FID" = "ID1", "IID" = "ID2", "trait")) %>%
+  inner_join(., cross_val)
+
+# training_coef <- tibble(file = list.files(path = "models/multiblup",
+#                                           pattern = ".coeff$",
+#                                           full.names = TRUE, recursive = TRUE)) %>%
+#   separate(file, sep = "/|[.]", into = c("source", "method", "pathway", "trait", "cvnum", "fold", "fill"), remove = FALSE) %>%
+#   mutate(data = lapply(file, read.table, header = TRUE)) %>%
+#   unnest(data) %>%
+#   filter(Component %in% "Intercept") %>%
+#   select(trait, pathway, cvnum, fold, Effect)
+#
+# head(training_coef)
+#
+# multiblup_pa <- tibble(file = list.files(path = "models/multiblup",
+#                                          pattern = ".profile$",
+#                                          full.names = TRUE, recursive = TRUE)) %>%
+#   separate(file, sep = "/|[.]", into = c("source", "method", "pathway", "trait", "cvnum", "fold"), remove = FALSE) %>%
+#   mutate(data = lapply(file, read.table, header = TRUE)) %>%
+#   unnest(data) %>%
+#   left_join(., training_coef, by = c("pathway", "trait", "cvnum", "fold"))
 
 head(multiblup_pa)
 

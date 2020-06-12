@@ -33,6 +33,21 @@ lr_null <- rbindlist(lapply(files, read.table, header = TRUE),
                           include.lowest = TRUE, dig.lab = 10),
          LR = 2 * (null_llik - gblup_llik))
 
+# lr_null <- rbindlist(lapply(files, read.table, header = TRUE),
+#                       idcol = "filename", use.names = TRUE) %>%
+#   mutate(filename = files[filename]) %>%
+#   separate(filename, sep = "/|[.]",
+#            into = c("dir", "source", "pathway", "trait", "metric", "model"), remove = FALSE) %>%
+#   filter(Num_Kinships %in% "Alt_Likelihood") %>%
+#   # mutate(null_llik = as.numeric(as.character(X2))) %>%
+#   # left_join(., gblup_llik, by = "trait") %>%
+#   # select(trait, pathway, Num_Kinships, null_llik, gblup_llik) %>%
+#   rename("LRT_Stat" = X2) %>%
+#   select(trait, pathway, LRT_Stat) %>%
+#   left_join(., feature_sizes, by = "pathway") %>%
+#   mutate(group_size = cut(size, breaks = seq(0, 50000, by = 10000),
+#                           include.lowest = TRUE, dig.lab = 10))
+
 head(lr_null)
 
 ## read in variance component estimates

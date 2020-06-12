@@ -75,7 +75,7 @@ def bincode(wildcards):
 
 # list trait names
 TRAIT = ['ala', 'arg', 'asp', 'gln' , 'glu', 'gly', 'his', 'ile', 'leu', 'lys','met',
-'phe', 'pro', 'ser', 'thr', 'trp', 'tyr', 'val', 'Total', 'ShikFam', 'AspFam',
+'phe', 'pro', 'ser', 'thr', 'trp', 'tyr', 'val', 'total', 'ShikFam', 'AspFam',
 'AspFam_Asp', 'SerFam', 'GluFam', 'GluFam_glu', 'BCAA', 'PyrFam', 'ala_t',
 'arg_t', 'asp_t', 'gln_t', 'glu_t', 'gly_t', 'his_t', 'ile_t', 'leu_t',
 'lys_t', 'met_t', 'phe_t', 'pro_t', 'ser_t', 'trp_t', 'tyr_t', 'val_t',
@@ -130,15 +130,18 @@ rule all:
         multiblup_h2 = expand("models/multiblup_h2/{pathway}/{trait}.multiblup.reml", pathway = PATHWAYS.keys(), trait = TRAIT),
         # # cross-validation for MultiBLUP
         multiblup_reml = expand("models/multiblup/{pathway}/{trait}.cv5.10.reml", pathway = PATHWAYS.keys(), trait = TRAIT),
-        multiblup_blup = expand("models/multiblup/{pathway}/{trait}.cv5.10.profile", pathway = PATHWAYS, trait = TRAIT),
+        multiblup_blup = expand("models/multiblup/{pathway}/{trait}.cv5.10.profile", pathway = PATHWAYS.keys(), trait = TRAIT),
         # # summary of MultiBLUP results
         multiblup_results = "reports/multiblup.RData",
         # # null distribution
         # null_sampling = "data/interim/null_group_sizes.txt",
         # null_gene_groups = expand("data/processed/random_sets/null_{null}.txt", null = NULL),
         # calc_kins_control = expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
-        reml_h2_control = expand("models/null_h2/c_{random}/{trait}.h2.reml", random = 5000, trait = TRAIT),
-        null_results = "reports/lr_null_results.csv"
+        null_pathway_sampling = expand("data/processed/random_sets_pathways/{pathway}/null_1000.txt", pathway = PATHWAYS.keys()),
+        calc_kins_null_pathways = expand("data/processed/random_sets_pathways/{pathway}/c_{random}/partition.list", pathway = PATHWAYS.keys(), random = 1000),
+        null_h2_pathways = expand("models/null_h2_pathways/{pathway}/c_1000/{trait}.h2.reml", pathway = PATHWAYS.keys(), trait = TRAIT)
+        # reml_h2_control = expand("models/null_h2/c_{random}/{trait}.h2.reml", random = 5000, trait = TRAIT),
+        # null_results = "reports/lr_null_results.csv"
 
 # include rule files with commands to run each step
 

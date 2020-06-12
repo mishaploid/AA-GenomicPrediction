@@ -43,7 +43,8 @@ rule gblup_h2:
         --pheno-name {params.trait} \
         --grm {params.grm} \
         --covar {input.covar} \
-        --constrain YES")
+        --constrain YES \
+        --reml-iter 500")
 
 ### GBLUP for genomic prediction - REML
 ### includes cross-validation
@@ -72,7 +73,8 @@ rule gblup_reml:
                 --grm {params.grm} \
                 --keep {params.keep}{i}.train{j} \
                 --covar {input.covar} \
-                --constrain YES")
+                --constrain YES \
+                --reml-iter 500")
 
 ### Step 4d: Calculate BLUPs
 ### extract BLUPs and calculate scores
@@ -81,7 +83,8 @@ rule gblup_reml:
 rule gblup_blup:
     input:
         pheno = config["pheno_file"],
-        model = expand("models/gblup/{{trait}}.cv{cv}.{index}.reml", cv = CV, index = INDEX)
+        model = expand("models/gblup/{{trait}}.cv{cv}.{index}.reml", cv = CV, index = INDEX),
+        covar = config["covar"]
     output:
         blup = expand("models/gblup/{{trait}}.cv{cv}.{index}.blup", cv = CV, index = INDEX),
         score = expand("models/gblup/{{trait}}.cv{cv}.{index}.profile", cv = CV, index = INDEX)
@@ -98,7 +101,8 @@ rule gblup_blup:
                 shell("{ldak} --calc-blups {params.out}{i}.{j} \
                 --grm {params.grm} \
                 --remlfile {params.reml}{i}.{j}.reml \
-                --bfile {params.bfile}")
+                --bfile {params.bfile} \
+                --covar {input.covar}")
                 shell("{ldak} --calc-scores {params.out}{i}.{j} \
                 --bfile {params.bfile} \
                 --power 0 \

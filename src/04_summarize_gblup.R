@@ -6,6 +6,12 @@
 library(tidyverse)
 library(broom)
 
+# phenotypes
+pheno <- read.table("data/raw/pheno_file", header = TRUE) %>%
+  gather(key = "trait",
+         value = "phenotype",
+         -FID, -IID)
+
 # heritability
 gblup_h2 <- tibble(file = list.files(path = "models/gblup_h2",
                                      pattern = ".reml$",
@@ -31,25 +37,46 @@ gblup_llik <- tibble(file = list.files(path = "models/gblup_h2",
 
 head(gblup_llik)
 
+# individuals used for test set
+cross_val <- tibble(filename = list.files(path = "data/processed/cross_validation",
+                    pattern = ".test", full.names = TRUE)) %>%
+             mutate(cvnum = word(filename, start = 4, end = 4, sep = "/|[.]"),
+                    fold = word(filename, start = 5, end = 5, sep = "/|[.]"),
+                    fold = gsub("test", "", fold)) %>%
+             mutate(file_contents = map(filename, ~read.table(., header = FALSE))) %>%
+             unnest(cols = c("file_contents")) %>%
+             rename("FID" = "V1",
+                    "IID" = "V2")
+
 # predictive accuracy
-
-training_coef <- tibble(file = list.files(path = "models/gblup",
-                                          pattern = ".coeff$",
-                                          full.names = TRUE)) %>%
-  separate(file, sep = "/|[.]", into = c("source", "method", "trait", "cvnum", "fold", "fill"), remove = FALSE) %>%
-  mutate(data = lapply(file, read.table, header = TRUE)) %>%
-  unnest(data) %>%
-  select(trait, cvnum, fold, Effect)
-
-head(training_coef)
-
 gblup_pa <- tibble(file = list.files(path = "models/gblup",
-                                     pattern = ".profile$",
+                                     pattern = ".pred$",
                                      full.names = TRUE)) %>%
   separate(file, sep = "/|[.]", into = c("source", "method", "trait", "cvnum", "fold", "fill"), remove = FALSE) %>%
   mutate(data = lapply(file, read.table, header = TRUE)) %>%
   unnest(data) %>%
-  left_join(., training_coef, by = c("trait", "cvnum", "fold"))
+  left_join(pheno, ., by = c("FID" = "ID1", "IID" = "ID2", "trait")) %>%
+  inner_join(., cross_val)
+  # left_join(., training_coef, by = c("trait", "cvnum", "fold"))
+
+# training_coef <- tibble(file = list.files(path = "models/gblup",
+#                                           pattern = ".coeff$",
+#                                           full.names = TRUE)) %>%
+#   separate(file, sep = "/|[.]", into = c("source", "method", "trait", "cvnum", "fold", "fill"), remove = FALSE) %>%
+#   mutate(data = lapply(file, read.table, header = TRUE)) %>%
+#   unnest(data) %>%
+#   filter(Component %in% "Intercept") %>%
+#   select(trait, cvnum, fold, Effect)
+#
+# head(training_coef)
+#
+# gblup_pa <- tibble(file = list.files(path = "models/gblup",
+#                                      pattern = ".profile$",
+#                                      full.names = TRUE)) %>%
+#   separate(file, sep = "/|[.]", into = c("source", "method", "trait", "cvnum", "fold", "fill"), remove = FALSE) %>%
+#   mutate(data = lapply(file, read.table, header = TRUE)) %>%
+#   unnest(data) %>%
+#   left_join(., training_coef, by = c("trait", "cvnum", "fold"))
 
 head(gblup_pa)
 

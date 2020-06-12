@@ -71,7 +71,8 @@ rule multiblup_h2:
             --pheno-name {params.trait} \
             --mgrm {params.mgrm}{p}/partition.list \
             --covar {input.covar} \
-            --constrain YES")
+            --constrain YES \
+            --reml-iter 500")
 
 ################################################################################
 # MultiBLUP - genomic prediction
@@ -100,7 +101,8 @@ rule multiblup_reml:
                     --mgrm {params.mgrm}{p}/partition.list \
                     --keep {params.keep}{i}.train{j} \
                     --covar {input.covar} \
-                    --constrain YES")
+                    --constrain YES \
+                    --reml-iter 100")
 
 ### MultiBLUP - calculate BLUPs
 ### extract BLUPs from REML and calculate scores
@@ -110,7 +112,7 @@ rule multiblup_blup:
     input:
         pheno = config["pheno_file"],
         model = expand("models/multiblup/{pathway}/{{trait}}.cv5.10.reml", pathway = PATHWAYS.keys()),
-        check = expand("models/multiblup/{pathway}/{{trait}}.cv5.10.reml", pathway = PATHWAYS.keys())
+        covar = config["covar"]
     output:
         blup = expand("models/multiblup/{pathway}/{{trait}}.cv5.10.blup", pathway = PATHWAYS.keys()),
         score = expand("models/multiblup/{pathway}/{{trait}}.cv5.10.profile", pathway = PATHWAYS.keys())
@@ -127,7 +129,8 @@ rule multiblup_blup:
                     shell("{ldak} --calc-blups {params.out}{p}/{params.trait}.cv{i}.{j} \
                     --mgrm {params.mgrm}{p}/partition.list \
                     --remlfile {params.out}{p}/{params.trait}.cv{i}.{j}.reml \
-                    --bfile {params.bfile}")
+                    --bfile {params.bfile} \
+                    --covar {input.covar}")
                     shell("{ldak} --calc-scores {params.out}{p}/{params.trait}.cv{i}.{j} \
                     --bfile {params.bfile} \
                     --power 0 \
