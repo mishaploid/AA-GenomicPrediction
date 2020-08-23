@@ -75,5 +75,11 @@
       "cpus-per-task" : 1,
       "p" : "main",
       "o" : "slurm_out/null_pathway_h2.%j.out"
+    },
+    "null_summary_pathways" :
+    {
+      "cpus-per-task" : 10,
+      "p" : "main",
+      "o" : "slurm_out/null_pathway_summary.%j.out"
     }
 }

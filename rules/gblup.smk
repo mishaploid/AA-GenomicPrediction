@@ -113,8 +113,9 @@ rule gblup_blup:
 
 rule gblup_results:
     input:
-        expand("models/gblup/{trait}.cv5.10.blup", trait = TRAIT)
+        blups = expand("models/gblup/{trait}.cv5.10.blup", trait = TRAIT),
+        blues = config["pheno_file"]
     output:
         "reports/gblup.RData"
     run:
-        shell("Rscript src/04_summarize_gblup.R")
+        shell("Rscript src/04_summarize_gblup.R {input.blues}")

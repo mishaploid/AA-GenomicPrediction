@@ -141,8 +141,9 @@ rule multiblup_blup:
 
 rule multiblup_results:
     input:
-        expand("models/multiblup/{pathway}/{trait}.cv5.10.blup", pathway = PATHWAYS.keys(), trait = TRAIT)
+        blups = expand("models/multiblup/{pathway}/{trait}.cv5.10.blup", pathway = PATHWAYS.keys(), trait = TRAIT),
+        blues = config["pheno_file"]
     output:
         "reports/multiblup.RData"
     run:
-        shell("Rscript src/06_summarize_multiblup.R")
+        shell("Rscript src/06_summarize_multiblup.R {input.blues}")

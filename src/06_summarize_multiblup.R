@@ -6,8 +6,11 @@
 library(tidyverse)
 library(broom)
 
+# use command line args
+args <- commandArgs(trailingOnly = TRUE)
+
 # phenotypes
-pheno <- read.table("data/raw/pheno_file", header = TRUE) %>%
+pheno <- read.table(paste0(args[1]), header = TRUE) %>%
   gather(key = "trait",
          value = "phenotype",
          -FID, -IID)

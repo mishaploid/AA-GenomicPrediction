@@ -67,7 +67,7 @@ rule null_h2:
         mgrm = expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
         covar = config["covar"]
     output:
-        out = expand("models/null_h2/c_{random}/{{trait}}.h2.reml", random = RANDOM),
+        out = expand("models/null_h2/c_{random}/{{trait}}.h2.reml", random = 5000),
     params:
         prefix = "models/null_h2/c_",
         trait = "{trait}",
@@ -148,7 +148,7 @@ rule null_h2_pathways:
         mgrm = "data/processed/random_sets_pathways/{pathway}/c_1000/partition.list",
         covar = config["covar"]
     output:
-        out = expand("models/null_h2_pathways/{{pathway}}/c_{random}/{{trait}}.h2.reml", random = range(1,1001)),
+        out = "models/null_h2_pathways/{pathway}/c_1000/{trait}.h2.reml",
     params:
         prefix = "models/null_h2_pathways/{pathway}/c_",
         trait = "{trait}",
@@ -162,3 +162,14 @@ rule null_h2_pathways:
             --covar {input.covar} \
             --constrain YES \
             --reml-iter 500")
+
+rule null_summary_pathways:
+    input:
+        reml_result = "models/null_h2_pathways/{pathway}/c_1000/thr_AspFam.h2.reml",
+        gblup = "reports/gblup.RData"
+    output:
+        "reports/null_dist_results_pathways/{pathway}_null.csv"
+    params:
+        pathway = "{pathway}"
+    run:
+        shell("Rscript src/09a_summarize_null_pathways.R {params.pathway}")

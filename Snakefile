@@ -138,8 +138,9 @@ rule all:
         # null_gene_groups = expand("data/processed/random_sets/null_{null}.txt", null = NULL),
         # calc_kins_control = expand("data/processed/random_sets/c_{random}/partition.list", random = 5000),
         null_pathway_sampling = expand("data/processed/random_sets_pathways/{pathway}/null_1000.txt", pathway = PATHWAYS.keys()),
-        calc_kins_null_pathways = expand("data/processed/random_sets_pathways/{pathway}/c_{random}/partition.list", pathway = PATHWAYS.keys(), random = 1000),
-        null_h2_pathways = expand("models/null_h2_pathways/{pathway}/c_1000/{trait}.h2.reml", pathway = PATHWAYS.keys(), trait = TRAIT)
+        calc_kins_null_pathways = expand("data/processed/random_sets_pathways/{pathway}/c_1000/partition.list", pathway = PATHWAYS.keys()),
+        # null_h2_pathways = expand("models/null_h2_pathways/{pathway}/c_1000/{trait}.h2.reml", pathway = PATHWAYS.keys(), trait = TRAIT),
+        null_summary_pathways = expand("reports/null_dist_results_pathways/{pathway}_null.csv", pathway = PATHWAYS.keys())
         # reml_h2_control = expand("models/null_h2/c_{random}/{trait}.h2.reml", random = 5000, trait = TRAIT),
         # null_results = "reports/lr_null_results.csv"
 
