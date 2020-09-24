@@ -1,0 +1,250 @@
+---
+title: 'AA-GP: MultiBLUP results'
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+editor_options:
+  chunk_output_type: inline
+always_allow_html: yes
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    code_folding: hide
+---
+
+```{r setup}
+knitr::opts_knit$set(root.dir = "~/Documents/AA-GenomicPrediction",
+                     warning = FALSE)
+knitr::opts_chunk$set(fig.width = 10)
+
+library(tidyverse)
+library(broom)
+library(kableExtra)
+library(rstatix)
+```
+
+## Determine MultiBLUP Thresholds
+
+```{r 95 threshold for multiblup}
+load("reports/model_summary.RData")
+load("reports/gblup.RData")
+load("reports/multiblup.RData")
+# load("reports/null_distribution.RData")
+
+aa_fam <- read.csv("data/processed/aa_family_ids.csv",
+                   header = TRUE)
+
+head(aa_fam)
+
+
+# set pathways to exclude
+exclude <-
+  c(
+    "aa_deg_bcat",
+    "aa_syn_nobcat",
+    "aa_deg_old",
+    "aa_syn_old",
+    "asp_protease",
+    "cys_protease",
+    "degradation_AAA",
+    "degradation_autophagy",
+    "degradation_subtilases",
+    "glycolysis_cystolic",
+    "glycolysis_plastid",
+    "glycolysis_other",
+    "metallo_protease",
+    "protein_degradation_old",
+    "ser_protease"
+  )
+
+pathways <- pathways %>% 
+  filter(!pathway %in% exclude)
+
+multiblup_summary <- multiblup_summary %>% 
+  inner_join(., gblup_llik) %>%
+  inner_join(., multiblup_llik) %>% 
+  mutate(pathway = fct_recode(pathway,
+                              aa_deg_old = "aa_degradation",
+                              aa_syn_old = "aa_synthesis",
+                              aa_degradation = "aa_deg_bcat_haplo",
+                              aa_synthesis = "aa_syn_nobcat_haplo"),
+         multiblup_lr = 2*(multiblup_llik - gblup_llik)) %>% 
+  filter(!pathway %in% exclude) 
+
+null_files <- list.files("reports/null_dist_results_pathways",
+                         pattern = ".csv",
+                         full.names = TRUE) 
+
+null_results <- null_files %>%
+  map(~read_csv(.)) %>%
+  reduce(rbind) %>%
+  mutate(pathway = fct_recode(pathway,
+                              aa_deg_old = "aa_degradation",
+                              aa_syn_old = "aa_synthesis",
+                              aa_degradation = "aa_deg_bcat_haplo",
+                              aa_synthesis = "aa_syn_nobcat_haplo")) %>% 
+  filter(Component %in% "Share_K1",
+         !pathway %in% exclude) 
+
+```
+
+```{r}
+null_results %>%
+  group_by(pathway) %>%
+  select(n_genes, n_snps) %>%
+  summarize_all(.funs = c(min = min,
+                max = max)) %>%
+  write.csv(., "reports/pathway_null_ranges.csv")
+```
+
+
+## Identify significant pathways
+
+```{r multiblup results}
+multiblup_null <- list() 
+
+for (p in unique(multiblup_summary$pathway)) {
+  for(t in unique(multiblup_summary$trait)) {
+  null_dist <- filter(null_results,
+                      pathway %in% p,
+                      trait %in% t) 
+  multi_h2 <- filter(multiblup_summary,
+                     pathway %in% p,
+                     trait %in% t)
+  h2_pval <- 1 - ecdf(null_dist$Share)(multi_h2$multiblup_h2)
+  lr_pval <- 1 - ecdf(null_dist$LR)(multi_h2$multiblup_lr)
+  multiblup_null[[t]][[p]] <- data.frame(trait = paste0(t),
+                              pathway = paste0(p), 
+                         h2_pval = h2_pval,
+                         lr_pval = lr_pval)
+  }          
+}
+
+multiblup_stats <- 
+  reduce(multiblup_null,
+              rbind) %>% 
+  bind_rows() %>% 
+  unique() %>% 
+  left_join(multiblup_summary, .) %>%
+  select(trait, pathway, multiblup_h2, h2_pval, multiblup_lr, lr_pval) %>%
+  unique()
+
+head(multiblup_stats)
+```
+
+# Combine genomic prediction results 
+
+```{r}
+gblup_mean <- gblup_summary %>% 
+  group_by(trait) %>% 
+  mutate(gblup_pa_mean = mean(gblup_pa),
+         gblup_pa_se = sd(gblup_pa)/sqrt(n())) %>% 
+  select(trait, gblup_pa_mean, gblup_pa_se) 
+
+pa_results <- left_join(multiblup_summary, 
+                        gblup_summary,
+                        by = c("trait", "cvnum", "fold")) %>%
+  gather(key = method,
+         value = pa,
+         multiblup_pa, gblup_pa) %>% 
+  select(trait, pathway, cvnum, fold, method, pa) %>% 
+  group_by(trait, pathway) %>% 
+  t_test(pa ~ method,
+         alternative = "less",
+         detailed = TRUE, 
+         paired = TRUE) %>% 
+  rename(pa_pval = p) %>% 
+  select(trait, pathway, pa_pval) 
+
+head(pa_results)
+
+```
+
+
+```{r}
+pa_means <- compare %>% 
+  group_by(trait, pathway) %>% 
+  summarize_if(is.numeric,
+               mean) %>% 
+  mutate(pathway = fct_recode(pathway,
+                            aa_degradation = "aa_deg_bcat_haplo",
+                            aa_synthesis = "aa_syn_nobcat_haplo"),
+         gblup_rmse = sqrt(gblup_mse),
+         multiblup_rmse = sqrt(multiblup_mse),
+         rmse_diff = multiblup_rmse - gblup_rmse)
+
+multiblup_results <- left_join(pa_means,
+                               multiblup_stats) %>% 
+  left_join(., pa_results) %>% 
+  group_by(trait) %>% 
+  mutate(h2_fdr = p.adjust(h2_pval, method = "BH", n = n()),
+         lr_fdr = p.adjust(lr_pval, method = "BH", n = n()),
+         pa_fdr = p.adjust(pa_pval, method = "BH", n = n())) %>%
+  mutate_if(is.numeric,
+            signif, 
+            digits = 4)
+
+write_csv(multiblup_results,
+          "reports/multiblup_full_results_summary.csv")
+```
+
+# export significant multiblup results
+
+```{r}
+multiblup_pass <- multiblup_results %>%
+  filter(h2_fdr <= 0.1,
+         lr_fdr <= 0.1,
+         pa_fdr <= 0.1) 
+
+table3 <- multiblup_pass %>% 
+  inner_join(aa_fam, ., 
+             by = c("trait")) %>%
+  left_join(., multiblup_stats) %>%
+  mutate(
+    aa_cat = fct_relevel(aa_cat, "absolute", "relative", "family"),
+    category = ifelse(
+      grepl("degradation_|protein_|protease", pathway),
+      "protein",
+      ifelse(
+        grepl(
+          "flavonoids|isoprenoids|N_containing|phenylpropanoids|S_containing",
+          pathway
+        ),
+        "specialized",
+        ifelse(
+          grepl("aa_degradation|aa_synthesis|aa_transport", pathway),
+          "amino acid",
+          "primary"
+        )
+      )
+    ) ,
+    category = factor(
+      category,
+      levels = c("amino acid", "primary", "specialized", "protein")
+    )
+  ) %>%
+  select(aa_cat, 
+         category, 
+         pathway, 
+         trait, 
+         multiblup_h2, 
+         h2_pval,
+         h2_fdr, 
+         multiblup_lr, 
+         lr_pval,
+         lr_fdr,
+         pa_diff,
+         pa_pval,
+         pa_fdr,
+         reliability_diff, 
+         bias_slope_diff, 
+         rmse_diff) %>%
+  distinct() %>% 
+  arrange(category, pathway, aa_cat) %>%
+  write_csv("reports/table3.csv")
+```
+
+```{r multiblup result}
+table3 %>% 
+  kable(digits = 4) %>%
+  kable_styling(bootstrap_options = "striped")
+```

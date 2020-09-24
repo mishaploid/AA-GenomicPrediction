@@ -1,0 +1,116 @@
+---
+title: "Transform phenotype data and calculate BLUEs"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    code_folding: hide
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+This script pulls the `func_generate_BLUE.R` function from HAPPI-GWAS to apply a 
+Box-Cox transformation and export BLUEs for free amino acid traits, as measured 
+in 313 individuals of the Arabidopsis RegMap panel (Angelovici et al. 2013, 2016).
+
+```{r setup, results = "hide"}
+knitr::opts_knit$set(root.dir = "~/Documents/AA-GenomicPrediction", 
+                     warning = FALSE)
+
+library(tidyverse)
+library(lme4)
+```
+
+
+## Raw Data 
+Load raw data
+
+```{r load function and data}
+# source BoxCox transformation and BLUE function from HAPPI-GWAS
+source("https://raw.githubusercontent.com/Angelovici-Lab/HAPPI.GWAS/master/R/func_generate_BLUE.R") 
+
+# read in raw FAA data
+raw_data <- read.csv("data/raw/aa360_raw_ratios.csv") %>%
+  mutate(Line = as.factor(Line),
+         population = as.factor(population))
+
+head(raw_data) 
+
+raw_data %>% 
+  gather(key = trait,
+         value = value,
+         -Line,
+         -population) %>% 
+  ggplot(., aes(trait, value)) +
+  geom_boxplot() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+```
+
+## Calculate BLUEs
+This function applies a Box-Cox transformation and calculates BLUEs for each trait
+
+```{r calc BLUEs, include = FALSE}
+blues_out <- generate_BLUE(raw_data)
+```
+
+## Check BLUEs
+
+```{r check distributions, fig.height = 12, fig.width = 10}
+BLUEs <- blues_out$BLUE
+
+# compare blues and blups 
+blues_long <- BLUEs %>% 
+  gather(-Line, key = trait, value = blues) %>%
+  rename(IID = Line)
+
+blues_long %>% 
+  ggplot(., aes(blues)) + 
+  geom_histogram() + 
+  facet_wrap(~trait, scales = "free")
+```
+
+
+```{r compare to BLUPs}
+blups_long <- read.table("data/external/aa360_blups.txt", header = TRUE) %>% 
+  rename(total = Total) %>% 
+  mutate(IID = as.factor(IID)) %>% 
+  gather(-FID, -IID, key = trait, value = blups) %>% 
+  left_join(., blues_long, by = c("IID", "trait"))
+
+cors <- blups_long %>%
+  group_by(trait) %>%
+  nest() %>%
+  mutate(spearman = map(data, function(x){
+    cor(x$blups, x$blues, use = "complete.obs")
+  })) %>% 
+  unnest(cols = c(data, spearman)) %>%
+  group_by(trait) %>% 
+  summarize_at(.vars = "spearman", .funs = mean)
+
+cors %>%
+  filter(spearman < 0.9)
+```
+
+
+## Format for LDAK
+Export phenotype data formatted for LDAK (plink format) 
+
+```{r export in plink format}
+
+BLUEs %>%
+  mutate(FID = "AtRegMap") %>% 
+  rename(IID = Line) %>% 
+  select(FID, IID, everything()) %>%
+  filter(IID %in% blups$IID) %>% 
+  head() 
+
+BLUEs %>%
+  mutate(FID = "AtRegMap") %>% 
+  rename(IID = Line) %>% 
+  select(FID, IID, everything()) %>%
+  filter(IID %in% blups$IID) %>% # select lines with genotype data
+  write.table(., "data/processed/aa360_BLUEs.txt",
+              quote = FALSE, 
+              row.names = FALSE)
+```
+

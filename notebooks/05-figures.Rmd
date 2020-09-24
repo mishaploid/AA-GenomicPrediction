@@ -1,0 +1,468 @@
+---
+title: "AA-GP: Figures"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup}
+knitr::opts_knit$set(root.dir = "~/Documents/AA-GenomicPrediction")
+
+library(tidyverse)
+library(broom)
+library(ggrepel)
+library(VennDiagram)
+library(RColorBrewer)
+library(cowplot)
+library(seqsetvis)
+
+# set colorblind friendly palette
+cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+
+# standard ggplot theme
+theme_set(theme_bw(base_size = 10))
+```
+
+```{r load results}
+load("reports/gblup.RData")
+load("reports/model_summary.RData")
+```
+
+## Figure 1 - GBLUP
+
+```{r fig 1, height = 2.75, width = 7.5}
+gblup_summary %>%
+  mutate(aa_cat = fct_relevel(aa_cat, 
+                              "absolute", "relative", "family"),
+         family = fct_relevel(family, 
+                              "aromatic", 
+                              after = 4)) %>%
+  group_by(trait) %>%
+  filter(mean(gblup_pa) > 0.3) %>%
+  ungroup() %>%
+  ggplot(., aes(reorder(trait, as.numeric(as.factor(aa_cat))), 
+                gblup_pa, 
+                fill = aa_cat, 
+                col = aa_cat)) +
+  scale_fill_manual(name = "", 
+                    values = c("#66a61e", "#d95f02", "#7570b3")) + 
+  scale_colour_manual(name = "", 
+                      values = c("#66a61e", "#d95f02", "#7570b3")) + 
+  geom_point(position = position_jitterdodge(dodge.width = 1), 
+             size = 0.75) + 
+  geom_boxplot(col = "grey25", 
+               position = position_dodge(width = 0.9), 
+               outlier.colour = NA, 
+               width = 0.5, 
+               alpha = 0.5) + 
+  # add points for genomic heritability 
+  geom_point(aes(trait, gblup_h2), 
+             colour = "black", 
+             shape = 2, 
+             size = 1.25,
+             show.legend = FALSE) + 
+  facet_grid(.~ family, 
+             scales = "free_x", 
+             space = "free") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.spacing = unit(.1, "lines")) +
+  xlab("") +
+  ylab("Prediction accuracy (r)")
+
+
+ggsave("reports/figures/Fig1.eps", height = 2.75, width = 7.5,
+       device = cairo_ps)
+
+```
+
+## Figure 2 - MultiBLUP results
+
+### Prep MultiBLUP data
+Reorder factor levels and add category information for pathways 
+
+```{r multiblup results, results = "hide"}
+fam <- data.frame(trait = gblup_summary$trait, 
+                  family = gblup_summary$family,
+                  aa_cat = gblup_summary$aa_cat)
+
+multiblup_pass <- read_csv("reports/table3.csv") %>%
+  # create all combinations for plotting
+  complete(pathway, nesting(trait)) %>%
+  inner_join(., fam) %>%
+  # pretty order for traits 
+  # also add category information for pathways 
+  mutate(family = factor(family, 
+                         levels = c("aspartate", "glutamate", "BCAA_pyruvate", 
+                                    "serine", "aromatic", "total")),
+         aa_cat = fct_relevel(aa_cat, 
+                              "relative", 
+                              after = 1),
+         aa_cat = fct_recode(aa_cat, 
+                             abs = "absolute", 
+                             rel = "relative", 
+                             fam = "family"),
+         family = fct_recode(family, 
+                             "pyruvate\n(BCAA)" = "BCAA_pyruvate"),
+         trait = fct_reorder(trait, as.numeric(family)),
+         trait = fct_reorder(trait, as.numeric(aa_cat)),
+         category = ifelse(
+      grepl("degradation_|protein_|protease", pathway),
+      "protein",
+      ifelse(
+        grepl(
+          "flavonoids|isoprenoids|N_containing|phenylpropanoids|S_containing",
+          pathway
+        ),
+        "specialized",
+        ifelse(
+          grepl("aa_degradation|aa_synthesis|aa_transport", pathway),
+          "amino acid",
+          "primary"
+        )
+      )
+    ) ,
+    category = factor(
+      category,
+      levels = c("amino acid", "primary", "specialized", "protein")
+    )) %>% 
+  dplyr::select(trait, 
+                pathway, 
+                multiblup_h2, 
+                family, 
+                aa_cat, 
+                category) %>%
+  distinct() 
+
+```
+
+### Venn Diagram of MultiBLUP results (Fig 2a)
+
+```{r venn diagram for multiblup results}
+
+multiblup_venn <- read_csv("reports/multiblup_full_results_summary.csv") %>% 
+  select(trait,
+         pathway,
+         h2_fdr,
+         lr_fdr,
+         pa_fdr) %>% 
+  gather(key = metric,
+         value = value,
+         -trait, 
+         -pathway) %>%
+  mutate(sig = value <= 0.10) %>% 
+  select(-value) %>% 
+  spread(key = metric,
+         value = sig) 
+  
+cols <- c("#66c2a5", "#fc8d62", "#8da0cb")
+
+sig_list <- multiblup_venn %>%
+  select(h2_fdr:pa_fdr)
+
+fig2a <- ssvMakeMembTable(sig_list) %>%
+  ssvFeatureVenn(.,
+                 circle_colors = cols,
+                 show_outside_count = TRUE,
+                 line_width = 1.25,
+                 counts_txt_size = 4,
+                 fill_alpha = 0.2)
+
+fig2a
+
+```
+
+### Significant MultiBLUP results (Fig 2b)
+
+```{r fig 2b}
+
+fig2b <- multiblup_pass %>%
+  ggplot(aes(pathway, fct_rev(trait), 
+             size = multiblup_h2, 
+             colour = family)) +
+  geom_point() +
+  # add color scale 
+  scale_colour_manual(name = "Family", 
+                      # reorder color palette
+                      values = cbPalette[c(5, 6, 7, 1, 3, 2)], 
+                      drop = FALSE) +
+  # add size scale for proportion of heritability explained (multiblup_h2)
+  scale_size_continuous(range = c(0, 4),
+                        limits = c(0, 1),
+                        breaks = c(0.25, 0.5, 0.75, 1),
+                        name = expression("Prop. h"^2)) +
+  # facet by amino acid family and metabolic category 
+  facet_grid(family ~ category,
+             scales = "free",
+             space = "free",
+             switch = "y") +
+  # set theme 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        # adjust panel spacing to avoid overplotting points 
+        panel.spacing.y = unit(0.1, "lines"),
+        panel.spacing.x = unit(0.1, "lines"),
+        panel.grid.major = element_line(colour = 'lightgray', size = 0.25),
+        # set text size 
+        text = element_text(size = 10),
+        axis.text = element_text(size = 8),
+        # bold font for facet labels 
+        strip.text = element_text(size = 8, 
+                                  margin = margin(),
+                                  face = "bold"),
+        strip.text.y.left = element_text(angle = 0),
+        legend.position = "top",
+        panel.background = element_blank()) +
+  # remove legend for color 
+  guides(colour = FALSE) +
+  labs(y = "Trait", 
+       x = "Pathway") +
+  # swap y axis label from left to right 
+  scale_y_discrete(position = "right") 
+
+fig2b
+
+# Generate the ggplot2 plot grob
+g <- grid.force(ggplotGrob(fig2b))
+# Get the names of grobs and their gPaths into a data.frame structure
+grobs_df <- do.call(cbind.data.frame, grid.ls(g, print = FALSE))
+# Build optimal gPaths that will be later used to identify grobs and edit them
+grobs_df$gPath_full <- paste(grobs_df$gPath, grobs_df$name, sep = "::")
+grobs_df$gPath_full <- gsub(pattern = "layout::", 
+                            replacement = "", 
+                            x = grobs_df$gPath_full, 
+                            fixed = TRUE)
+
+# adjust color of facet background 
+# code adapted from: https://stackoverflow.com/questions/53455092/r-ggplot2-change-colour-of-font-and-background-in-facet-strip
+
+# Get the gPaths of the strip background grobs
+strip_bg_gpath <- grobs_df$gPath_full[grepl(pattern = ".*strip\\.background.*", 
+                                            x = grobs_df$gPath_full)]
+
+strip_bg_gpath[1] # example of a gPath for strip background 
+
+# Get the gPaths of the strip titles
+strip_txt_gpath <- grobs_df$gPath_full[grepl(pattern = "strip.*titleGrob.*text.*", 
+                                             x = grobs_df$gPath_full)]
+
+strip_txt_gpath[1] # example of a gPath for strip title
+
+# set fill colors with transparency 
+fills <- c(rep("lightgray", 3), # column facets 
+           alpha(cbPalette[c(5, 6, 7, 1, 3, 2, 4)], 0.7)) # row facets
+
+for (i in 1:length(strip_bg_gpath)){
+  g <- editGrob(grob = g, gPath = strip_bg_gpath[i], gp = gpar(fill = fills[i]))
+}
+
+grid.newpage()
+grid.draw(g)
+
+```
+
+### Fig 2 - combine panels
+
+```{r Fig2}
+plot_grid(fig2a, NULL, g,
+          nrow = 1,
+          labels = c("A", "", "B"),
+          rel_widths = c(.7, 0.08, 1))
+
+ggsave("reports/figures/Fig2.pdf",
+       height = 4,
+       width = 7.5,
+       units = "in")
+```
+
+
+## Figure 3 - correlation of off-diagonals for kinship matrices
+
+```{r read in kinship matrices}
+# list files 
+files <- list.files(path = "data/processed/pathways", 
+                    pattern = ".grm.raw",
+                    recursive = TRUE,
+                    full.names = TRUE)
+
+# split files into pathway name 
+nms <- str_split(files, 
+                 pattern = "pathways/|.grm",
+                 simplify = TRUE)[,2]
+
+# combine pathway names with file names 
+nms <- data.frame(files, nms) %>%
+  separate(nms, 
+           into = c("pathway", "partition"), 
+           sep = "/")
+
+# read and combine files 
+kinships <- files %>%
+  map(~read.table(., header = FALSE))
+
+# set names 
+names(kinships) <- paste(nms$pathway, 
+                         nms$partition, 
+                         sep = "_")
+
+```
+
+```{r kinship correlations}
+
+ind <- which(upper.tri(kinships[[1]], diag = FALSE), arr.ind = TRUE)
+
+nn <- dimnames(kinships[[1]])
+
+kinships_df <- kinships %>%
+  map(~data.frame(row = nn[[1]][ind[,1]],
+                  col = nn[[2]][ind[,2]],
+                  val = .x[ind])
+    ) %>% 
+  bind_rows(., 
+            .id = "pathway")
+
+# set pathways to exclude
+exclude <-
+  c("aa_degradation",
+    "aa_synthesis",
+    "aa_deg_bcat",
+    "aa_syn_nobcat",
+    "aa_deg_old",
+    "aa_syn_old",
+    "asp_protease",
+    "cys_protease",
+    "degradation_AAA",
+    "degradation_autophagy",
+    "degradation_subtilases",
+    "glycolysis_cystolic",
+    "glycolysis_plastid",
+    "glycolysis_other",
+    "metallo_protease",
+    "protein_degradation_old",
+    "ser_protease"
+  )
+
+pathway_sizes <- read_csv("reports/pathways_summary.csv") %>% 
+    mutate(category = ifelse(
+      grepl("degradation_|protein_|protease", pathway),
+      "protein",
+      ifelse(
+        grepl(
+          "flavonoids|isoprenoids|N_containing|phenylpropanoids|S_containing",
+          pathway
+        ),
+        "specialized",
+        ifelse(
+          grepl("aa_", pathway),
+          "amino acid",
+          "primary"
+        )
+      )
+    ) ,
+    category = factor(
+      category,
+      levels = c("amino acid", "primary", "specialized", "protein")
+    ))
+
+kinship_corrs <- kinships_df %>%
+  separate(pathway, into = c("pathway", "partition"), sep = "_kinships.") %>%
+  mutate(partition = fct_recode(partition,
+                                p1 = "1",
+                                p2 = "2")) %>%
+  spread(key = partition, value = val) %>% 
+  group_by(pathway) %>%
+  summarize(cor_p = cor(p1, p2, method = "pearson"),
+            cor_s = cor(p1, p2, method = "spearman")) %>% 
+  left_join(., pathway_sizes) %>% 
+  filter(!pathway %in% exclude) %>% 
+  mutate(pathway = fct_recode(pathway,
+                              "aa_degradation" = "aa_deg_bcat_haplo",
+                              "aa_synthesis" = "aa_syn_nobcat_haplo"))
+
+
+k_corrs <- kinship_corrs %>%
+  ggplot(aes(cor_s, fct_reorder(pathway, -size),  
+             col = category,
+             fill = category,
+             shape = category)) + 
+  geom_point(size = 1.5) +
+  scale_color_brewer(palette = "Dark2") + 
+  scale_fill_brewer(palette = "Dark2") + 
+  scale_shape_manual(values = c(21:24)) + 
+  theme_bw() + 
+  theme(legend.position = c(0.75,0.75),
+        legend.background = element_rect(linetype = "solid", colour = "black", size = 0.25),
+        legend.text = element_text(size = 6),
+        legend.title = element_blank()) +
+  xlab("Rank correlation") +
+  ylab("pathway") 
+
+k_corrs
+
+```
+
+
+```{r}
+
+multiblup_full_results <- read_csv("reports/multiblup_full_results_summary.csv")
+
+# create data frame for plotting
+plot_df <- multiblup_full_results %>% 
+  # select(-sig) %>% 
+  na.omit() %>% 
+  # spread(key = metric,
+  #        value = value) %>%
+  left_join(., pathway_sizes) %>% 
+  left_join(., multiblup_summary) %>% 
+  mutate(FDR_0.1 = ifelse(h2_fdr <= .10 &
+                            lr_fdr <= .10 &
+                            pa_fdr <= .10,
+                            "Significant",
+                            "Nonsignificant"),
+         label = ifelse(FDR_0.1 == "Significant",
+                        paste0(pathway),
+                        "")
+  )
+
+
+library(ggExtra)
+
+pa_size <- plot_df %>% 
+  # filter(trait %in% "his") %>% 
+  ggplot(., aes(pa_diff,
+                multiblup_h2,
+                size = size)) +
+  geom_point(aes(fill = FDR_0.1),
+             shape = 21,
+             col = "gray30",
+             alpha = 0.8) +
+  scale_fill_manual(name = "",
+                    values = c("gray90", "#287D8EFF")) + 
+  theme_bw() +
+  labs(size = "No. SNPs",
+       x = expression("r"[MultiBLUP] - "r"[GBLUP]),
+       y = expression(Prop. ~ h^2 ~ explained ~ (MultiBLUP))) +
+  theme(legend.position = "right",
+        legend.text = element_text(size = 6),
+        legend.title = element_text(size = 8))
+
+pa_size
+
+```
+
+```{r, fig.width = 6, fig.height = 2}
+plot_grid(k_corrs, NULL, pa_size,
+          rel_widths = c(0.9, .02, 1),
+          labels = c("A", "", "B"),
+          nrow = 1)
+
+ggsave("reports/figures/Fig3.eps",
+       height = 8,
+       width = 20,
+       units = "cm",
+       device = cairo_ps)
+
+```

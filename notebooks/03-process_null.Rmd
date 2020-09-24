@@ -1,0 +1,281 @@
+---
+title: "AA-GP: process null distribution"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    code_folding: hide
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+editor_options: 
+  chunk_output_type: inline
+---
+
+This notebook reads in results for the MultiBLUP model using 5000 random gene group to do the following:   
+
+* summarize the number of models that pass filtering criteria   
+* examine the distribution of the likelihood ratio (see Edwards et al 2016)   
+* establish 95 percentiles for heritability and the likelihood ratio  
+
+```{r setup, results = "hide"}
+knitr::opts_knit$set(root.dir = "~/Documents/AA-GenomicPrediction/",
+                     warning = FALSE)
+knitr::opts_chunk$set(fig.width = 10)
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(quantreg)
+library(data.table)
+library(viridis)
+library(emdbook)
+library(gridExtra)
+library(cowplot)
+```
+
+# Size distribution of null pathways
+Number of markers should have a uniform distribution
+
+```{r load data, fig.width = 5, results = "hide"} 
+aa_fam <- read.csv("data/processed/aa_family_ids.csv",
+                   header = TRUE)
+
+null_dist <- read_csv("reports/lr_null_results.csv") %>%
+  # set amino acid family ids 
+  left_join(., aa_fam, by = "trait")
+
+null_dist %>%
+  distinct(pathway, size.x) %>%
+  ggplot(., aes(size.x)) +
+  geom_histogram(binwidth = 1000) +
+  xlab("Gene group size (number of SNPs)")
+```
+
+# Filtering
+Filter out values where the REML model did not converge  
+
+Set negative heritability estimates to zero 
+
+Export summary to S2 table
+
+```{r table S2}
+S2table <- null_dist %>%
+  group_by(trait) %>%
+  filter(Component %in% "Share_K1") %>%
+  mutate("Number of gene groups" = ifelse(SD < 0 | LR < 0, 0, 1),
+         "Failed to converge" = ifelse(SD < 0, 1, 0),
+         "Negative LR" = ifelse(LR < 0, 1, 0)) %>%
+  select("Number of gene groups", "Failed to converge", "Negative LR") %>%
+  summarize_all(.funs = "sum") 
+
+S2table %>%
+  write_csv(., "reports/tableS2_null_summary.csv")
+
+head(S2table)
+```
+
+Apply filters to null distribution 
+
+```{r filter null}
+null_dist <- null_dist %>% 
+  # mutate(Share = ifelse(Share < 0, 0, Share),
+  #        Share = ifelse(Share > 1, 1, Share)) %>%
+  rename(size = "size.x",
+         n_genes = "n_genes.x") %>% 
+  # remove values where SD of heritability is strange (results in inflated LR)
+  filter(# SD > 0 & LR >= 0 &
+    Component %in% "Share_K1") %>%
+  dplyr::select(family, trait, pathway, size, n_genes, group_size, LR, Component, Share, SD) 
+
+head(null_dist)
+```
+
+# Likelihood ratio
+
+## Distribution
+Expect LR to be distributed as $\chi^2_{df 1}$~ based on Wilks' Theorem 
+
+```{r null lr distribution, fig.height = 14, fig.width = 8}
+null_dist %>%
+    ggplot(., aes(LR)) + 
+    geom_histogram(bins = 50) +
+  facet_wrap(~trait, scales = "free", ncol = 6) +
+  theme_bw() 
+
+# ggsave("reports/figures/null_histogram.png", height = 12, width = 8)
+```
+
+## QQ plots
+
+Maybe some inflation at smaller group sizes (< 10,000 SNPs)
+
+```{r qqchisq, fig.height = 14, fig.width = 8}
+null_dist %>%
+  # filter(trait %in% c("ala", "ala_PyrFam", "asp_t", "his", "Total")) %>% 
+  mutate(group_size = fct_relevel(group_size, "[0,10000]")) %>%
+  ggplot(., aes(sample = LR, colour = group_size)) + 
+  scale_colour_manual(values = viridis(6)[1:5]) + 
+  stat_qq(distribution = qchisq, dparams = list(df = 1.5)) +
+  facet_wrap( ~ trait, scales = "free", ncol = 6) +
+  geom_abline(slope = 1, intercept = 0) +
+  theme_bw() + 
+  theme(legend.position = "top") 
+
+# ggsave("reports/figures/FigS5.png", height = 12, width = 8)
+```
+
+## LR goodness-of-fit tests 
+Test if LR follows Wilks' theorem expectation of $\chi^2$ distribution   
+
+* $\chi^2$ test    
+* Kolmogorov-Smirnov test (D)  
+
+```{r test goodness of fit, results = "hide", message = FALSE}
+GoF <- null_dist %>% 
+  select(trait, LR) %>%
+  group_by(trait) %>%
+  mutate(
+    # return distance (D) for Kolmogorov-Smirnov goodness-of-fit test 
+    # df = 1
+    D1 = ks.test(LR, pchisq, df = 1)$statistic,
+    # df = mixture of 1 and 2 
+    D1_2 = ks.test(LR, rchibarsq(length(LR), 2, mix = 0.5))$statistic,
+    # df = 2
+    D2 = ks.test(LR, pchisq, df = 2)$statistic,
+    # return p-value for chi-sq goodness of fit test 
+    # df = 1
+    X2_1 = suppressWarnings(chisq.test(LR, rchisq(length(LR), 1))$p.value),
+    # df = mixture of 1 and 2
+    X2_1_2 = suppressWarnings(chisq.test(LR, rchibarsq(length(LR), 2, mix = 0.5))$p.value),
+    # df = 2
+    X2_2 = suppressWarnings(chisq.test(LR, rchisq(length(LR), 2))$p.value)) %>%
+  summarise_all(mean) %>%
+  select(trait, LR, D1, D1_2, D2, X2_1, X2_1_2, X2_2)
+```
+
+```{r gof table}
+# return table of results 
+GoF %>% 
+  kable(digits = 4) %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+```{r plot KS statistic, fig.height = 14, fig.width = 8}
+# plot results
+GoF %>%
+  select(trait, D1, D1_2, D2) %>%
+  gather(key = df, value = D, -trait) %>%
+  mutate(df = recode(df, D1 = "1", D1_2 = "1.5", D2 = "2")) %>%
+  ggplot(., aes(df, D, group = trait)) +
+  geom_point() + 
+  geom_line() +
+  xlab("degrees of freedom") +
+  ylab("Kolmogorov-Smirnov test statistic (D)") + 
+  facet_wrap(~ trait, scales = "fixed", ncol = 6) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+# ggsave("reports/figures/FigS4.png", height = 12, width = 10)  
+```
+
+```{r get minimum D value}
+GoF %>%
+  select(trait, D1, D1_2, D2) %>%
+  gather(key = df, value = D, -trait) %>%
+  group_by(trait) %>%
+  mutate(df = recode(df, D1 = "1", D1_2 = "1.5", D2 = "2")) %>%
+  slice(which.min(D)) %>%
+  ungroup() %>%
+  write_csv("reports/goodness_of_fit.csv") %>%
+  head()
+```
+
+# Empirical thresholds
+
+## 95 percentile for LR 
+
+Fit an additive quantile regression to establish 95 percentile cut off for LR at different pathway sizes (number of markers) 
+
+```{r 95 quantile for LR}
+## 95% LR threshold for plotting
+lr_fit <- NULL
+coefs <- NULL
+
+for (i in unique(null_dist$trait)) {
+  lr_fit[[i]] <- rqss(as.numeric(LR) ~ qss(size, constraint = "I"), 
+                      data = null_dist[null_dist$trait==i,], tau = 0.95) 
+  coefs[[i]] <- data.frame(lr_fit[[i]]$qss$size$xyz) %>%
+    mutate(lr_95 = X2 + lr_fit[[i]]$coef[1],
+           size = X1) %>%
+    dplyr::select(size, lr_95)
+}
+
+lr_threshold <- rbindlist(coefs, idcol = "trait")
+
+null_dist <- null_dist %>%
+  left_join(., lr_threshold, by = c("trait", "size")) %>%
+  mutate(col = LR >= lr_95) 
+
+null_dist %>%
+  as_tibble() %>%
+  head()
+```
+
+## 95 percentile for $h^2$ 
+
+Fit an additive quantile regression to establish 95% quantile cut off for proportion of genomic variance explained (H^2) at different pathway sizes (number of markers) 
+
+```{r 95 quantile for H2}
+h2_fit <- NULL
+h2_coefs <- NULL
+
+for (i in unique(null_dist$trait)) {
+  h2_fit[[i]] <- rqss(as.numeric(Share) ~ qss(size, constraint = "I"), 
+                      data = null_dist[null_dist$trait==i,], tau = 0.977) #FDR corrected 
+                      # data = null_dist[null_dist$trait==i,], tau = 0.95)
+  h2_coefs[[i]] <- data.frame(h2_fit[[i]]$qss$size$xyz) %>%
+    mutate(h2_95 = X2 + h2_fit[[i]]$coef[1],
+           size = X1) %>%
+    dplyr::select(size, h2_95)
+}
+
+h2_threshold <- rbindlist(h2_coefs, idcol = "trait") %>%
+  as_tibble()
+  
+head(h2_threshold)
+```
+
+## Plot null distribution
+Blue dots are pathways that also pass the LR_95 threshold  
+Solid line is the 95% percentile for proportion of heritability explained  
+Dashed line is the infinitesimal expectation (each SNP contributes approximately equal amount of variation)
+
+```{r h2 95 threshold, fig.height = 14, fig.width = 8}
+null_dist %>%
+  ggplot(., aes(size, Share, colour = col)) +
+  scale_colour_manual(values = c("lightgrey", "#1c9099"),
+                      labels = c(expression(paste(LR < LR[95])), 
+                                 expression(paste(LR > LR[95])))) + 
+  geom_point(position = position_dodge(width = 0.3), aes(size = col), alpha = 0.75) + 
+  scale_size_manual(guide = "none", values = c(0.1, 0.5)) + 
+  geom_quantile(method = "rqss", lambda = 500, quantiles = c(0.95),
+                formula = as.formula(y ~ qss(x, constraint = "I")),
+                aes(linetype = factor(..quantile..)),
+                colour = "black", show.legend = FALSE) + 
+  geom_abline(aes(intercept = 0, slope = 1/199452, linetype = "dashed")) + 
+  scale_linetype_manual(labels = c(expression(paste(H[95]^2)), 
+                                   "infinitesimal"),
+                        values = c(1,2)) +
+  facet_wrap( ~ trait, ncol = 6) +
+  xlim(0, 50000) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        legend.title = element_blank(),
+        legend.text.align = 0)
+
+# ggsave("reports/figures/S2Fig.tiff", height = 12, width = 10)  
+```
+
+# save results
+```{r save results}
+save(lr_fit, h2_fit, file = "reports/null_distribution.RData")
+```
