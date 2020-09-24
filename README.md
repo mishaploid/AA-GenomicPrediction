@@ -33,10 +33,17 @@ Before running Snakemake, download the **Arabidopsis Regional Mapping (RegMap) d
 Raw measurements (nmol/mg seed) of 65 free amino acid traits measured in 313 accessions of _Arabidopsis thaliana_ as reported by [Angelovici et al. 2013](http://www.plantcell.org/content/25/12/4827#sec-12)  
 
 - **data/processed/aa360_BLUEs.txt**
+<<<<<<< HEAD
 Environment adjusted best linear unbiased estimates (BLUEs) for 65 free amino acid traits. Calculated using the `HAPPI-GWAS` pipeline from [Slaten et al. 2020](https://doi.org/10.1093/bioinformatics/btaa589). Check out `notebooks/01-calculate_BLUEs.Rmd` for details.
 
 - **data/processed/aa360_covars.txt**  
 Principal components from genotype data to model population structure.
+=======
+Environment adjusted best linear unbiased estimates (BLUEs) for 65 free amino acid traits. Calculated using the `HAPPI-GWAS` pipeline from [Slaten et al. 2020](https://doi.org/10.1093/bioinformatics/btaa589). Check out `notebooks/01-calculate_BLUEs.Rmd` for details. 
+
+- **data/processed/aa360_covars.txt**  
+Principal components from genotype data to model population structure. 
+>>>>>>> 68d7678c2f127a0d136bc50ddcb99e776364fc43
 
 Snakemake
 ------------
@@ -56,7 +63,11 @@ rules/common.smk - specifies location of config.yaml file
 - filter and convert genotype data to PED format
 - exports TAIR 10 ensembl gene ids for SNP data
 - calculate SNP weightings (these aren't actually used, could skip)
+<<<<<<< HEAD
 - run PCA and exports covariate file (including two PCs here - recommend adjusting depending on data)
+=======
+- run PCA and exports covariate file (including two PCs here - recommend adjusting depending on data) 
+>>>>>>> 68d7678c2f127a0d136bc50ddcb99e776364fc43
 
 #### rules/cross_validation.smk
 - create training and testing sets for cross validation
@@ -78,8 +89,13 @@ rules/common.smk - specifies location of config.yaml file
 #### rules/null_distribution.smk
 - first option: generate 5000 random gene groups with a uniform distribution of SNPs. This is useful if you want to examine influences of partition size on heritability explained/model fit or if you are looking to compare a lot of different partitions with varying size to an empirical distribution (output `reports/lr_null_results.csv`)
 - second option: generate 1000 random gene groups for each pathway (excludes pathway SNPs and samples a similar number of SNPs/genes)
+<<<<<<< HEAD
 - calculate kinship matrices for each random group
 - estimate variances and heritability for each random SNP set
+=======
+- calculate kinship matrices for each random group 
+- estimate variances and heritability for each random SNP set 
+>>>>>>> 68d7678c2f127a0d136bc50ddcb99e776364fc43
 - summarize results across all 1000 gene groups (`reports/null_dist_results_pathways/{pathway}_null.csv`)
 
 Notebooks
@@ -96,10 +112,17 @@ Checks quality of model output and summarizes prediction results for the GBLUP a
 Examines properties of the random gene groups (e.g. distribution of likelihood ratio) and performs quantile regression to establish 95 percentiles for the proportion of heritability explained and likelihood ratio (see nice discussion of this approach in [Edwards et al. 2016](https://gsejournal.biomedcentral.com/articles/10.1186/s12711-015-0132-6))
 
 #### 04-multiblup_results_by_pathway.Rmd
+<<<<<<< HEAD
 Identifies pathways that pass significance criteria based on comparison to random gene groups with the same number of SNPs (proportion of h<sup>2</sup>, likelihood ratio, and  increase in prediction accuracy).
 
 #### 05-figures.Rmd
 Code to create figures used in the manuscript.
+=======
+Identifies pathways that pass significance criteria based on comparison to random gene groups with the same number of SNPs (proportion of h<sup>2</sup>, likelihood ratio, and  increase in prediction accuracy). 
+
+#### 05-figures.Rmd
+Code to create figures used in the manuscript. 
+>>>>>>> 68d7678c2f127a0d136bc50ddcb99e776364fc43
 
 
 Project Organization (based on Cookiecutter data science)
