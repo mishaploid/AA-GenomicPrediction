@@ -87,6 +87,7 @@ target/
 /reports/190918_archive/
 /reports/200511_archive/
 /scratch/
+/trash/
 
 # log files
 /slurm_out
@@ -105,4 +106,4 @@ target/
 # Mypy cache
 .mypy_cache/
 
-.RHistory
+*.RHistory

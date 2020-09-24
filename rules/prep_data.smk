@@ -66,29 +66,6 @@ rule snp_weightings:
 # Step 2: run principal component analysis (PCA)
 # use as covariates in reml model to account for population structure
 
-# rule pca_input:
-#     input:
-#         bed = config["bfile"] + ".bed",
-#         bim = config["bfile"] + ".bim",
-#         fam = config["bfile"] + ".fam"
-#     output:
-#         "models/pca/ld_pruned.bed"
-#     params:
-#         bfile = config["bfile"],
-#         pruned = "models/pca/prune",
-#         outdir = "models/pca/ld_pruned"
-#     run:
-#         shell("""awk < {input.bim} "{{print \$2}}" > data/processed/all.snps""")
-#         shell("plink --bfile {params.bfile} \
-#         --extract data/processed/all.snps \
-#         --make-founders require-2-missing \
-#         --indep-pairwise 10 5 .1 \
-#         --out {params.pruned}")
-#         shell("plink --bfile {params.bfile} \
-#         --extract {params.pruned}.prune.in \
-#         --out {params.outdir} \
-#         --make-bed")
-#
 # rule pca_result:
 #     input:
 #         "models/pca/ld_pruned.bed"
